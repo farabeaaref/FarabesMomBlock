@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Farabe's Mom – Block | Live Game Control Studio</title>
+  <style>
+    :root {
+      --bg: #130921;
+      --card: #211038;
+      --border: #5a2e98;
+      --accent: #5fd63a;
+      --gold: #ffd23f;
+      --pink: #ff5e99;
+      --text: #fff8f0;
+      --muted: #c2b2d8;
+    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body {
+      margin: 0; background: radial-gradient(circle at top, #2c134e 0%, var(--bg) 65%);
+      color: var(--text); min-height: 100vh; padding: 24px;
+    }
+    .container { max-width: 1180px; margin: 0 auto; }
+    header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;
+      background: linear-gradient(135deg, #321757, #1c0d31);
+      border: 2px solid var(--border); border-radius: 20px; padding: 18px 24px; margin-bottom: 22px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    }
+    header h1 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 10px; }
+    .badge {
+      background: rgba(255,210,63,0.16); color: var(--gold); border: 1px solid var(--gold);
+      padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; }
+    .card {
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 18px;
+      padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .card h2 {
+      margin: 0 0 14px; font-size: 16px; color: var(--gold); display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;
+    }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 5px; font-weight: 600; }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #4d2980;
+      background: #140826; color: var(--text); font-size: 14px;
+    }
+    .color-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .color-box {
+      display: flex; align-items: center; gap: 8px; background: #140826;
+      padding: 6px 10px; border-radius: 10px; border: 1px solid #4d2980;
+    }
+    input[type="color"] { border: none; width: 34px; height: 28px; background: none; cursor: pointer; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 18px; border-radius: 12px; border: none; font-weight: 800; font-size: 14px;
+      cursor: pointer; transition: transform .1s, filter .15s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-green {
+      background: linear-gradient(180deg, #74eb4c, #2ea819); color: #fff;
+      box-shadow: 0 4px 0 #1b6b0e; width: 100%; margin-top: 14px;
+    }
+    .btn-pink {
+      background: linear-gradient(180deg, #ff70a6, #d93870); color: #fff;
+      box-shadow: 0 4px 0 #8f1d45; width: 100%; margin-top: 12px;
+    }
+    .btn-purple {
+      background: linear-gradient(180deg, #8b5cf6, #5b21b6); color: #fff;
+      box-shadow: 0 4px 0 #3b0f82; margin-top: 8px; width: 100%;
+    }
+    .upload-zone {
+      border: 1.5px dashed #7a48b8; border-radius: 12px; padding: 12px; background: #170b2b;
+      margin-top: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .upload-zone input[type="file"] { font-size: 12px; color: var(--muted); max-width: 210px; }
+    .status-toast {
+      position: fixed; bottom: 20px; right: 20px; background: #22c55e; color: #052e16;
+      padding: 12px 18px; border-radius: 12px; font-weight: 800; display: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 99;
+    }
+    .info-bar {
+      background: #170b2b; border: 1px solid #4d2980; border-radius: 12px; padding: 10px 14px;
+      font-size: 12px; color: var(--muted); margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 18px;
+    }
+    .info-bar code { color: var(--gold); background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; }
+    .preview-chip {
+      display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: #86efac;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>🎮 Farabe's Mom – Live Game Studio</h1>
+        <div style="font-size:13px; color:var(--muted); margin-top:4px;">
+          Change backgrounds, theme colors, photos, MP3 songs, gifts & notify Mom instantly!
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span class="badge" id="versionBadge">Config v1</span>
+        <button class="btn btn-green" style="width:auto; margin:0;" onclick="saveAllConfig()">🚀 Save &amp; Notify Mom</button>
+      </div>
+    </header>
+
+    <div class="info-bar" id="serverInfo">
+      Loading connection info...
+    </div>
+
+    <div class="grid">
+      <!-- 1. Theme & Colors -->
+      <div class="card">
+        <h2>🎨 Colors &amp; 3D Style</h2>
+        <div class="color-row">
+          <div>
+            <label>Primary Velvet Color</label>
+            <div class="color-box">
+              <input type="color" id="primaryColorHex" value="#2B144A" />
+              <span id="primaryColorLabel">#2B144A</span>
+            </div>
+          </div>
+          <div>
+            <label>Card Surface Color</label>
+            <div class="color-box">
+              <input type="color" id="surfaceColorHex" value="#3B1D63" />
+              <span id="surfaceColorLabel">#3B1D63</span>
+            </div>
+          </div>
+          <div>
+            <label>Frame Glow / Border</label>
+            <div class="color-box">
+              <input type="color" id="borderColorHex" value="#7D48C4" />
+              <span id="borderColorLabel">#7D48C4</span>
+            </div>
+          </div>
+          <div>
+            <label>Play Button Accent</label>
+            <div class="color-box">
+              <input type="color" id="accentColorHex" value="#5FD63A" />
+              <span id="accentColorLabel">#5FD63A</span>
+            </div>
+          </div>
+          <div>
+            <label>Gold / Coin Accent</label>
+            <div class="color-box">
+              <input type="color" id="goldAccentHex" value="#FFD23F" />
+              <span id="goldAccentLabel">#FFD23F</span>
+            </div>
+          </div>
+          <div>
+            <label>Board Frame Tint</label>
+            <div class="color-box">
+              <input type="color" id="boardFrameHex" value="#321852" />
+              <span id="boardFrameLabel">#321852</span>
+            </div>
+          </div>
+        </div>
+        <label>Ambient 3D Particle Effect</label>
+        <select id="ambientEffect">
+          <option value="FIREFLIES_AND_PETALS">Twilight Fireflies &amp; Rose Petals</option>
+          <option value="GOLDEN_SPARKLES">Golden Celebration Sparkles</option>
+          <option value="ROSE_PETALS">Soft Floating Rose Petals</option>
+          <option value="NONE">Clean (Minimal)</option>
+        </select>
+        <button class="btn btn-purple" onclick="saveAllConfig()">Apply Theme &amp; Notify</button>
+      </div>
+
+      <!-- 2. Backgrounds & Images -->
+      <div class="card">
+        <h2>🖼️ Backgrounds &amp; Photos</h2>
+        <label>Home Screen Garden Background</label>
+        <div class="upload-zone">
+          <input type="file" id="fileHomeBg" accept="image/*" />
+          <button class="btn btn-purple" style="width:auto; margin:0; padding:8px 12px;" onclick="uploadMedia('home_bg','fileHomeBg')">Upload</button>
+        </div>
+        <div class="preview-chip" id="homeBgStatus"></div>
+
+        <label>Gameplay Board Background</label>
+        <div class="upload-zone">
+          <input type="file" id="fileGameBg" accept="image/*" />
+          <button class="btn btn-purple" style="width:auto; margin:0; padding:8px 12px;" onclick="uploadMedia('game_bg','fileGameBg')">Upload</button>
+        </div>
+        <div class="preview-chip" id="gameBgStatus"></div>
+
+        <label>Mom's Memory Photo (Sketchbook)</label>
+        <div class="upload-zone">
+          <input type="file" id="fileMomPhoto" accept="image/*" />
+          <button class="btn btn-purple" style="width:auto; margin:0; padding:8px 12px;" onclick="uploadMedia('mom_photo','fileMomPhoto')">Upload</button>
+        </div>
+        <div class="preview-chip" id="momPhotoStatus"></div>
+
+        <label>Sketchbook Album Cover Art</label>
+        <div class="upload-zone">
+          <input type="file" id="fileSketchbook" accept="image/*" />
+          <button class="btn btn-purple" style="width:auto; margin:0; padding:8px 12px;" onclick="uploadMedia('sketchbook','fileSketchbook')">Upload</button>
+        </div>
+        <div class="preview-chip" id="sketchStatus"></div>
+      </div>
+
+      <!-- 3. Music & Songs -->
+      <div class="card">
+        <h2>🎵 Songs &amp; Audio</h2>
+        <label>Active Song Title</label>
+        <input type="text" id="activeSongTitle" placeholder="Ammu's Favorite Song" />
+
+        <label>Upload New MP3 / WAV / OGG Song</label>
+        <div class="upload-zone">
+          <input type="file" id="fileSong" accept="audio/*" />
+          <button class="btn btn-pink" style="width:auto; margin:0; padding:8px 14px;" onclick="uploadMedia('song','fileSong')">Upload &amp; Push</button>
+        </div>
+        <div class="preview-chip" id="songStatus"></div>
+
+        <label>Recently Uploaded Songs</label>
+        <div id="songsList" style="font-size:12px; color:var(--muted); max-height:110px; overflow:auto; background:#140826; padding:10px; border-radius:10px; margin-top:4px;">
+          No custom songs uploaded yet.
+        </div>
+      </div>
+
+      <!-- 4. Send Instant Gift to Mom -->
+      <div class="card">
+        <h2>🎁 Send Surprise Gift to Mom</h2>
+        <label>Gift Title</label>
+        <input type="text" id="giftTitle" value="Surprise Gift from Farabe! 🎁" />
+
+        <label>Loving Message for Mom (Bengali / English)</label>
+        <textarea id="giftMessage" rows="2">আম্মু, তোমার জন্য ভালোবাসার উপহার ও অনেক দোয়া ❤️</textarea>
+
+        <div class="color-row">
+          <div>
+            <label>Coins Reward</label>
+            <input type="number" id="giftCoins" value="500" />
+          </div>
+          <div>
+            <label>Hearts Reward</label>
+            <input type="number" id="giftHearts" value="3" />
+          </div>
+        </div>
+        <button class="btn btn-pink" onclick="sendGift()">🎁 Send Gift &amp; Notify Mom</button>
+      </div>
+
+      <!-- 5. Notification & Secret Letter -->
+      <div class="card">
+        <h2>🔔 Update Notification &amp; Letter</h2>
+        <label>Notification Title (shown on Mom's phone)</label>
+        <input type="text" id="notifyTitle" value="আম্মু, নতুন সারপ্রাইজ এসেছে! ❤️" />
+        <label>Notification Message</label>
+        <textarea id="notifyBody" rows="2">ফারাবী তোমার জন্য নতুন গান, থিম ও উপহার পাঠিয়েছে।</textarea>
+
+        <label>Extra Secret Letter (pushed live into Sketchbook/Helpers)</label>
+        <input type="text" id="letterTitle" placeholder="Letter title..." />
+        <textarea id="letterContent" rows="2" placeholder="Write a personal note for Mom..."></textarea>
+        <button class="btn btn-green" onclick="addLetterAndNotify()">💌 Push Letter &amp; Notify Mom</button>
+      </div>
+
+      <!-- 6. Cloud / GitHub Sync for Mom's Real Phone -->
+      <div class="card">
+        <h2>☁️ Publish to Mom's Real Phone (GitHub)</h2>
+        <p style="font-size:12px; color:var(--muted); margin-top:0;">
+          Every save automatically exports to <code>cloud-sync/</code>. Connect your GitHub raw URL so Mom gets updates anywhere over mobile data/Wi-Fi even when your PC is off.
+        </p>
+        <label>GitHub Raw Base URL (cloud-sync folder)</label>
+        <input type="text" id="githubRawBaseUrl" />
+        <label>Optional New APK Download URL (when updating app code)</label>
+        <input type="text" id="appDownloadUrl" placeholder="https://github.com/user/repo/releases/download/v1.1.0/app-release.apk" />
+        <div class="color-row">
+          <div>
+            <label>APK Version Code</label>
+            <input type="number" id="appVersionCode" value="1" />
+          </div>
+          <div>
+            <label>APK Version Name</label>
+            <input type="text" id="appVersionName" value="1.0.0" />
+          </div>
+        </div>
+        <button class="btn btn-purple" onclick="exportCloud(false)">📦 Export to cloud-sync/ Folder</button>
+        <button class="btn btn-green" onclick="exportCloud(true)">☁️ Export &amp; Git Push to Mom</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-toast" id="toast">Saved &amp; Notification Sent!</div>
+
+  <script>
+    let currentConfig = {};
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+
+    ['primaryColorHex','surfaceColorHex','borderColorHex','accentColorHex','goldAccentHex','boardFrameHex'].forEach(id => {
+      const el = document.getElementById(id);
+      const lbl = document.getElementById(id.replace('Hex','Label'));
+      el.addEventListener('input', () => { lbl.textContent = el.value.toUpperCase(); });
+    });
+
+    async function loadInitial() {
+      const [cfgRes, infoRes] = await Promise.all([fetch('/api/config?raw=1'), fetch('/api/info')]);
+      currentConfig = await cfgRes.json();
+      const info = await infoRes.json();
+
+      document.getElementById('serverInfo').innerHTML =
+        `<span>📱 Emulator endpoint: <code>${info.emulatorUrl}</code></span>` +
+        (info.lanUrls.length ? `<span>📶 Wi-Fi phone: <code>${info.lanUrls[0]}</code></span>` : '');
+
+      applyConfigToForm(currentConfig);
+    }
+
+    function applyConfigToForm(c) {
+      document.getElementById('versionBadge').textContent = `Config v${c.configVersion || 1}`;
+      const t = c.theme || {};
+      setColor('primaryColorHex', t.primaryColorHex || '#2B144A');
+      setColor('surfaceColorHex', t.surfaceColorHex || '#3B1D63');
+      setColor('borderColorHex', t.borderColorHex || '#7D48C4');
+      setColor('accentColorHex', t.accentColorHex || '#5FD63A');
+      setColor('goldAccentHex', t.goldAccentHex || '#FFD23F');
+      setColor('boardFrameHex', t.boardFrameHex || '#321852');
+
+      document.getElementById('ambientEffect').value = c.background?.ambientEffect || 'FIREFLIES_AND_PETALS';
+      document.getElementById('homeBgStatus').textContent = c.background?.homeBackgroundUrl ? `Active: ${c.background.homeBackgroundUrl}` : 'Using built-in 3D Twilight Garden';
+      document.getElementById('gameBgStatus').textContent = c.background?.gameplayBackgroundUrl ? `Active: ${c.background.gameplayBackgroundUrl}` : 'Using dynamic 3D theme backdrop';
+      document.getElementById('momPhotoStatus').textContent = c.images?.momPhotoUrl ? `Active: ${c.images.momPhotoUrl}` : 'Using gallery/default photo';
+      document.getElementById('sketchStatus').textContent = c.images?.sketchbookImageUrl ? `Active: ${c.images.sketchbookImageUrl}` : 'Using built-in Shapla Sketchbook art';
+
+      document.getElementById('activeSongTitle').value = c.music?.activeSongTitle || '';
+      document.getElementById('songStatus').textContent = c.music?.activeSongUrl ? `Active MP3: ${c.music.activeSongUrl}` : 'Using calming ambient chimes';
+      const songs = c.music?.songs || [];
+      document.getElementById('songsList').innerHTML = songs.length
+        ? songs.map(s => `<div>🎵 ${s.title} (${s.url})</div>`).join('')
+        : 'No custom songs uploaded yet.';
+
+      if (c.gifts?.activeGift) {
+        document.getElementById('giftTitle').value = c.gifts.activeGift.title || '';
+        document.getElementById('giftMessage').value = c.gifts.activeGift.messageBengali || '';
+        document.getElementById('giftCoins').value = c.gifts.activeGift.coinsReward || 250;
+        document.getElementById('giftHearts').value = c.gifts.activeGift.heartsReward || 3;
+      }
+
+      document.getElementById('notifyTitle').value = c.notification?.title || '';
+      document.getElementById('notifyBody').value = c.notification?.body || '';
+      document.getElementById('githubRawBaseUrl').value = c.githubRawBaseUrl || '';
+      document.getElementById('appDownloadUrl').value = c.appDownloadUrl || '';
+      document.getElementById('appVersionCode').value = c.appVersionCode || 1;
+      document.getElementById('appVersionName').value = c.appVersionName || '1.0.0';
+    }
+
+    function setColor(id, val) {
+      document.getElementById(id).value = val;
+      document.getElementById(id.replace('Hex','Label')).textContent = val.toUpperCase();
+    }
+
+    async function saveAllConfig() {
+      const payload = {
+        appVersionCode: Number(document.getElementById('appVersionCode').value) || 1,
+        appVersionName: document.getElementById('appVersionName').value.trim(),
+        appDownloadUrl: document.getElementById('appDownloadUrl').value.trim(),
+        githubRawBaseUrl: document.getElementById('githubRawBaseUrl').value.trim(),
+        theme: {
+          primaryColorHex: document.getElementById('primaryColorHex').value,
+          surfaceColorHex: document.getElementById('surfaceColorHex').value,
+          borderColorHex: document.getElementById('borderColorHex').value,
+          accentColorHex: document.getElementById('accentColorHex').value,
+          goldAccentHex: document.getElementById('goldAccentHex').value,
+          boardFrameHex: document.getElementById('boardFrameHex').value
+        },
+        background: {
+          ambientEffect: document.getElementById('ambientEffect').value
+        },
+        music: {
+          activeSongTitle: document.getElementById('activeSongTitle').value.trim()
+        },
+        notification: {
+          title: document.getElementById('notifyTitle').value.trim(),
+          body: document.getElementById('notifyBody').value.trim()
+        }
+      };
+      const res = await fetch('/api/config', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.ok) {
+        currentConfig = data.config;
+        applyConfigToForm(currentConfig);
+        showToast(`Published v${currentConfig.configVersion}! Mom will be notified.`);
+      }
+    }
+
+    async function uploadMedia(type, inputId) {
+      const input = document.getElementById(inputId);
+      const file = input.files[0];
+      if (!file) { alert('Please select a file first.'); return; }
+      const res = await fetch(`/api/upload?type=${encodeURIComponent(type)}&name=${encodeURIComponent(file.name)}`, {
+        method: 'POST', body: file
+      });
+      const data = await res.json();
+      if (data.ok) {
+        currentConfig = data.config;
+        applyConfigToForm(currentConfig);
+        showToast(`Uploaded ${file.name} & pushed v${currentConfig.configVersion}!`);
+      } else {
+        alert('Upload failed: ' + data.error);
+      }
+    }
+
+    async function sendGift() {
+      const res = await fetch('/api/gift', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          title: document.getElementById('giftTitle').value.trim(),
+          messageBengali: document.getElementById('giftMessage').value.trim(),
+          coinsReward: Number(document.getElementById('giftCoins').value) || 250,
+          heartsReward: Number(document.getElementById('giftHearts').value) || 3
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        currentConfig = data.config;
+        applyConfigToForm(currentConfig);
+        showToast(`🎁 Gift sent! Mom notified (v${currentConfig.configVersion}).`);
+      }
+    }
+
+    async function addLetterAndNotify() {
+      const title = document.getElementById('letterTitle').value.trim();
+      const content = document.getElementById('letterContent').value.trim();
+      const letters = [...(currentConfig.gifts?.customLetters || [])];
+      if (title && content) {
+        letters.unshift({ id: `remote_${Date.now()}`, title, content });
+      }
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          gifts: { ...(currentConfig.gifts || {}), customLetters: letters },
+          notification: {
+            title: document.getElementById('notifyTitle').value.trim(),
+            body: document.getElementById('notifyBody').value.trim()
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        currentConfig = data.config;
+        document.getElementById('letterTitle').value = '';
+        document.getElementById('letterContent').value = '';
+        applyConfigToForm(currentConfig);
+        showToast('💌 Letter & notification pushed to Mom!');
+      }
+    }
+
+    async function exportCloud(autoPush) {
+      const res = await fetch('/api/export-github', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          githubRawBaseUrl: document.getElementById('githubRawBaseUrl').value.trim(),
+          autoPush
+        })
+      });
+      const data = await res.json();
+      showToast(data.message || 'Exported!');
+    }
+
+    loadInitial();
+  </script>
+</body>
+</html>

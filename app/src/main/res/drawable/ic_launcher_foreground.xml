@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Block 1: Soft Pink -->
+    <path
+        android:fillColor="#F3A6B8"
+        android:pathData="M30,30h22v22h-22z" />
+    <!-- Block 2: Sky Blue -->
+    <path
+        android:fillColor="#82C9ED"
+        android:pathData="M56,30h22v22h-22z" />
+    <!-- Block 3: Mint -->
+    <path
+        android:fillColor="#9ED9B5"
+        android:pathData="M30,56h22v22h-22z" />
+    <!-- Block 4: Sunshine Yellow with Love Heart -->
+    <path
+        android:fillColor="#F8D77A"
+        android:pathData="M56,56h22v22h-22z" />
+    <!-- Central Heart -->
+    <path
+        android:fillColor="#E85D75"
+        android:pathData="M54,44 C51,39 44,39 41,44 C38,49 42,56 54,64 C66,56 70,49 67,44 C64,39 57,39 54,44 Z" />
+</vector>

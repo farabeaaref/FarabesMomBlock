@@ -1,0 +1,69 @@
+{
+  "configVersion": 6,
+  "appVersionCode": 1,
+  "appVersionName": "1.0.0",
+  "appDownloadUrl": "",
+  "githubRawBaseUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync",
+  "theme": {
+    "primaryColorHex": "#2b144a",
+    "surfaceColorHex": "#3b1d63",
+    "borderColorHex": "#7d48c4",
+    "accentColorHex": "#5fd63a",
+    "goldAccentHex": "#ffd23f",
+    "boardFrameHex": "#321852",
+    "tileStyle": "GLOSSY_3D_CANDY"
+  },
+  "background": {
+    "homeBackgroundUrl": "/uploads/1794642431495_IMG_1265.JPG",
+    "gameplayBackgroundUrl": "",
+    "ambientEffect": "FIREFLIES_AND_PETALS"
+  },
+  "images": {
+    "momPhotoUrl": "",
+    "helperAvatarUrl": "",
+    "sketchbookImageUrl": ""
+  },
+  "music": {
+    "activeSongTitle": "Maa Official Music Video Shironamhin Bangla Song",
+    "activeSongUrl": "/uploads/1794642301496_Maa_Official_Music_Video_Shironamhin_Bangla_Song.mp3",
+    "songs": [
+      {
+        "title": "Maa Official Music Video Shironamhin Bangla Song",
+        "url": "/uploads/1794642301496_Maa_Official_Music_Video_Shironamhin_Bangla_Song.mp3",
+        "addedAt": "2026-11-14T07:45:01.513Z"
+      }
+    ]
+  },
+  "gifts": {
+    "activeGift": {
+      "giftId": "gift_1794582640437",
+      "title": "Tea & Love Gift for Ammu! ☕❤️",
+      "messageBengali": "আম্মু, এক কাপ গরম চা খাও আর এই উপহার নাও!",
+      "coinsReward": 350,
+      "heartsReward": 2
+    },
+    "customLetters": [
+      {
+        "id": "remote_letter_1",
+        "title": "একটা ছোট্ট চিঠি ❤️",
+        "content": "আম্মু, তোমার হাসিই আমার পৃথিবী। যখনই সময় পাবে, একটু গেমটা খেলো আর আমার পাঠানো নতুন গানগুলো শুনো।"
+      }
+    ],
+    "customTasks": [
+      {
+        "id": "task_daily_love",
+        "helperName": "Farabe",
+        "title": "Play 3 rounds with Ammu's favorite song",
+        "target": 3,
+        "rewardCoins": 150,
+        "rewardGems": 2
+      }
+    ]
+  },
+  "notification": {
+    "notifyId": "notify_6_1794642431500",
+    "title": "আম্মু, নতুন সুন্দর ব্যাকগ্রাউন্ড এসেছে! 🌸",
+    "body": "ফারাবী গেমের হোম স্ক্রিন সাজিয়েছে, এখনই দেখো!",
+    "timestamp": "2026-11-14T07:47:11.500Z"
+  }
+}
