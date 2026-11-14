@@ -1,9 +1,18 @@
 {
-  "configVersion": 6,
-  "appVersionCode": 1,
-  "appVersionName": "1.0.0",
+  "configVersion": 11,
+  "appVersionCode": 2,
+  "appVersionName": "1.1.0",
   "appDownloadUrl": "",
   "githubRawBaseUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync",
+  "voice": {
+    "winVoiceUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync/uploads/1794656661611_test_win.wav",
+    "loseVoiceUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync/uploads/1794656661632_test_lose.wav",
+    "comboVoiceUrl": "",
+    "enableWinVoice": true,
+    "enableLoseVoice": true,
+    "enableComboVoice": true,
+    "duckMusicWhileSpeaking": true
+  },
   "theme": {
     "primaryColorHex": "#2b144a",
     "surfaceColorHex": "#3b1d63",
@@ -16,7 +25,7 @@
   "background": {
     "homeBackgroundUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync/uploads/1794642431495_IMG_1265.JPG",
     "gameplayBackgroundUrl": "",
-    "ambientEffect": "FIREFLIES_AND_PETALS"
+    "ambientEffect": "GOLDEN_SPARKLES"
   },
   "images": {
     "momPhotoUrl": "",
@@ -61,9 +70,9 @@
     ]
   },
   "notification": {
-    "notifyId": "notify_6_1794642431500",
-    "title": "আম্মু, নতুন সুন্দর ব্যাকগ্রাউন্ড এসেছে! 🌸",
-    "body": "ফারাবী গেমের হোম স্ক্রিন সাজিয়েছে, এখনই দেখো!",
-    "timestamp": "2026-11-14T07:47:11.500Z"
+    "notifyId": "notify_11_1794656661633",
+    "title": "আম্মু, ফারাবীর ভালোবাসার ভয়েস নোট এসেছে! 🎙️🌸",
+    "body": "গেম ওভারে তোমার জন্য আমার উৎসাহের কথা!",
+    "timestamp": "2026-11-14T11:44:21.633Z"
   }
 }
