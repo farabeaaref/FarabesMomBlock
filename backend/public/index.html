@@ -218,6 +218,63 @@
         </div>
       </div>
 
+      <!-- 3B. Record Voice Messages for Mom (Win / Lose / Combo) -->
+      <div class="card">
+        <h2>🎙️ Farabe's Voice for Mom (Win / Lose / Combo)</h2>
+        <p style="font-size:12px; color:var(--muted); margin-top:0;">
+          Record your real voice directly from your mic (saves as Android-ready WAV) or upload a voice clip. Game music automatically ducks softly while your voice plays!
+        </p>
+
+        <div style="background:#140826; border:1px solid #452472; border-radius:12px; padding:10px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:13px;">🏆 When Mom Wins / Beats Best Score</strong>
+            <label style="margin:0; font-size:11px;"><input type="checkbox" id="enableWinVoice" style="width:auto;" checked onchange="saveVoiceToggles()"> Enabled</label>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+            <button id="recBtn_win_voice" class="btn btn-pink" style="width:auto; margin:0; padding:7px 12px;" onclick="toggleMicRecord('win_voice')">🎙️ Record Win</button>
+            <input type="file" id="fileWinVoice" accept="audio/*" style="width:auto; flex:1; min-width:130px;" />
+            <button class="btn btn-purple" style="width:auto; margin:0; padding:7px 10px;" onclick="uploadMedia('win_voice','fileWinVoice')">Upload</button>
+            <button class="btn btn-purple" style="width:auto; margin:0; padding:7px 10px; background:#3b1628;" onclick="clearVoice('winVoiceUrl')">Clear</button>
+          </div>
+          <audio id="preview_win_voice" controls style="width:100%; height:32px; margin-top:8px; display:none;"></audio>
+          <div class="preview-chip" id="winVoiceStatus">No win voice set</div>
+        </div>
+
+        <div style="background:#140826; border:1px solid #452472; border-radius:12px; padding:10px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:13px;">❤️ When Game Over (Encouraging Mom)</strong>
+            <label style="margin:0; font-size:11px;"><input type="checkbox" id="enableLoseVoice" style="width:auto;" checked onchange="saveVoiceToggles()"> Enabled</label>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+            <button id="recBtn_lose_voice" class="btn btn-pink" style="width:auto; margin:0; padding:7px 12px;" onclick="toggleMicRecord('lose_voice')">🎙️ Record Lose</button>
+            <input type="file" id="fileLoseVoice" accept="audio/*" style="width:auto; flex:1; min-width:130px;" />
+            <button class="btn btn-purple" style="width:auto; margin:0; padding:7px 10px;" onclick="uploadMedia('lose_voice','fileLoseVoice')">Upload</button>
+            <button class="btn btn-purple" style="width:auto; margin:0; padding:7px 10px; background:#3b1628;" onclick="clearVoice('loseVoiceUrl')">Clear</button>
+          </div>
+          <audio id="preview_lose_voice" controls style="width:100%; height:32px; margin-top:8px; display:none;"></audio>
+          <div class="preview-chip" id="loseVoiceStatus">No game-over voice set</div>
+        </div>
+
+        <div style="background:#140826; border:1px solid #452472; border-radius:12px; padding:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:13px;">🔥 On Big Combo x3+ (Cheering Mom)</strong>
+            <label style="margin:0; font-size:11px;"><input type="checkbox" id="enableComboVoice" style="width:auto;" checked onchange="saveVoiceToggles()"> Enabled</label>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+            <button id="recBtn_combo_voice" class="btn btn-pink" style="width:auto; margin:0; padding:7px 12px;" onclick="toggleMicRecord('combo_voice')">🎙️ Record Combo</button>
+            <input type="file" id="fileComboVoice" accept="audio/*" style="width:auto; flex:1; min-width:130px;" />
+            <button class="btn btn-purple" style="width:auto; margin:0; padding:7px 10px;" onclick="uploadMedia('combo_voice','fileComboVoice')">Upload</button>
+            <button class="btn btn-purple" style="width:auto; margin:0; padding:7px 10px; background:#3b1628;" onclick="clearVoice('comboVoiceUrl')">Clear</button>
+          </div>
+          <audio id="preview_combo_voice" controls style="width:100%; height:32px; margin-top:8px; display:none;"></audio>
+          <div class="preview-chip" id="comboVoiceStatus">No combo voice set</div>
+        </div>
+
+        <label style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="duckMusicWhileSpeaking" style="width:auto;" checked onchange="saveVoiceToggles()"> Soften background song while Farabe speaks (Audio Ducking)
+        </label>
+      </div>
+
       <!-- 4. Send Instant Gift to Mom -->
       <div class="card">
         <h2>🎁 Send Surprise Gift to Mom</h2>
@@ -346,6 +403,29 @@
       document.getElementById('appDownloadUrl').value = c.appDownloadUrl || '';
       document.getElementById('appVersionCode').value = c.appVersionCode || 1;
       document.getElementById('appVersionName').value = c.appVersionName || '1.0.0';
+
+      const v = c.voice || {};
+      document.getElementById('enableWinVoice').checked = v.enableWinVoice !== false;
+      document.getElementById('enableLoseVoice').checked = v.enableLoseVoice !== false;
+      document.getElementById('enableComboVoice').checked = v.enableComboVoice !== false;
+      document.getElementById('duckMusicWhileSpeaking').checked = v.duckMusicWhileSpeaking !== false;
+      updateVoicePreview('win_voice', 'winVoiceStatus', v.winVoiceUrl);
+      updateVoicePreview('lose_voice', 'loseVoiceStatus', v.loseVoiceUrl);
+      updateVoicePreview('combo_voice', 'comboVoiceStatus', v.comboVoiceUrl);
+    }
+
+    function updateVoicePreview(kind, statusId, url) {
+      const audioEl = document.getElementById(`preview_${kind}`);
+      const statusEl = document.getElementById(statusId);
+      if (url) {
+        statusEl.textContent = `Active voice: ${url}`;
+        audioEl.src = url.startsWith('http') ? url : url;
+        audioEl.style.display = 'block';
+      } else {
+        statusEl.textContent = 'No voice recorded/uploaded yet';
+        audioEl.removeAttribute('src');
+        audioEl.style.display = 'none';
+      }
     }
 
     function setColor(id, val) {
@@ -464,6 +544,127 @@
       });
       const data = await res.json();
       showToast(data.message || 'Exported!');
+    }
+
+    // --- Live Browser Microphone 16-bit PCM WAV Recorder ---
+    let activeRecType = null;
+    let recStream = null;
+    let recAudioCtx = null;
+    let recProcessor = null;
+    let recChunks = [];
+
+    function writeWavString(view, offset, str) {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    }
+
+    function encodeWavBlob(floatChunks, sampleRate) {
+      const totalLen = floatChunks.reduce((sum, arr) => sum + arr.length, 0);
+      const buffer = new ArrayBuffer(44 + totalLen * 2);
+      const view = new DataView(buffer);
+      writeWavString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + totalLen * 2, true);
+      writeWavString(view, 8, 'WAVE');
+      writeWavString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeWavString(view, 36, 'data');
+      view.setUint32(40, totalLen * 2, true);
+      let offset = 44;
+      for (const chunk of floatChunks) {
+        for (let i = 0; i < chunk.length; i++) {
+          const s = Math.max(-1, Math.min(1, chunk[i]));
+          view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+          offset += 2;
+        }
+      }
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    async function toggleMicRecord(type) {
+      const btn = document.getElementById(`recBtn_${type}`);
+      if (activeRecType && activeRecType !== type) {
+        alert('Stop the active recording first.');
+        return;
+      }
+      if (!activeRecType) {
+        try {
+          recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          recAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const source = recAudioCtx.createMediaStreamSource(recStream);
+          recProcessor = recAudioCtx.createScriptProcessor(4096, 1, 1);
+          recChunks = [];
+          recProcessor.onaudioprocess = e => {
+            recChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+          };
+          source.connect(recProcessor);
+          recProcessor.connect(recAudioCtx.destination);
+          activeRecType = type;
+          btn.textContent = '⏹️ Stop & Upload';
+          btn.style.background = '#ff3b30';
+          showToast('🎙️ Recording... Click again when done!');
+        } catch (err) {
+          alert('Microphone access failed: ' + err.message);
+        }
+      } else {
+        const sampleRate = recAudioCtx.sampleRate;
+        recProcessor.disconnect();
+        recStream.getTracks().forEach(t => t.stop());
+        await recAudioCtx.close();
+        const wavBlob = encodeWavBlob(recChunks, sampleRate);
+        activeRecType = null;
+        btn.textContent = type === 'win_voice' ? '🎙️ Record Win' : type === 'lose_voice' ? '🎙️ Record Lose' : '🎙️ Record Combo';
+        btn.style.background = '';
+
+        const fileName = `${type}_${Date.now()}.wav`;
+        const res = await fetch(`/api/upload?type=${encodeURIComponent(type)}&name=${encodeURIComponent(fileName)}`, {
+          method: 'POST', body: wavBlob
+        });
+        const data = await res.json();
+        if (data.ok) {
+          currentConfig = data.config;
+          applyConfigToForm(currentConfig);
+          showToast(`🎙️ Uploaded your ${type.replace('_', ' ')} for Mom!`);
+        }
+      }
+    }
+
+    async function saveVoiceToggles() {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voice: {
+            enableWinVoice: document.getElementById('enableWinVoice').checked,
+            enableLoseVoice: document.getElementById('enableLoseVoice').checked,
+            enableComboVoice: document.getElementById('enableComboVoice').checked,
+            duckMusicWhileSpeaking: document.getElementById('duckMusicWhileSpeaking').checked
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        currentConfig = data.config;
+        showToast('🎙️ Voice settings updated!');
+      }
+    }
+
+    async function clearVoice(fieldKey) {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice: { [fieldKey]: '' } })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        currentConfig = data.config;
+        applyConfigToForm(currentConfig);
+        showToast('Cleared voice clip.');
+      }
     }
 
     loadInitial();

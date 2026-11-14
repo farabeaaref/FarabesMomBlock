@@ -66,6 +66,11 @@ function resolveConfigUrls(cfg, baseUrl) {
       }));
     }
   }
+  if (clone.voice) {
+    clone.voice.winVoiceUrl = resolveUrl(clone.voice.winVoiceUrl, baseUrl);
+    clone.voice.loseVoiceUrl = resolveUrl(clone.voice.loseVoiceUrl, baseUrl);
+    clone.voice.comboVoiceUrl = resolveUrl(clone.voice.comboVoiceUrl, baseUrl);
+  }
   return clone;
 }
 
@@ -200,6 +205,7 @@ const server = http.createServer(async (req, res) => {
         background: { ...current.background, ...(body.background || {}) },
         images: { ...current.images, ...(body.images || {}) },
         music: { ...current.music, ...(body.music || {}) },
+        voice: { ...(current.voice || {}), ...(body.voice || {}) },
         gifts: { ...current.gifts, ...(body.gifts || {}) }
       };
       bumpVersion(updated, body.notification?.title, body.notification?.body);
@@ -266,6 +272,29 @@ const server = http.createServer(async (req, res) => {
         cfg.music.songs = cfg.music.songs || [];
         cfg.music.songs.unshift({ title: displayTitle, url: relUrl, addedAt: new Date().toISOString() });
         bumpVersion(cfg, 'আম্মু, নতুন গান যোগ হয়েছে! 🎵❤️', `"${displayTitle}" শুনতে গেমটি আপডেট করো!`);
+      } else if (targetType === 'win_voice' || targetType === 'lose_voice' || targetType === 'combo_voice') {
+        cfg.voice = cfg.voice || {
+          winVoiceUrl: '',
+          loseVoiceUrl: '',
+          comboVoiceUrl: '',
+          enableWinVoice: true,
+          enableLoseVoice: true,
+          enableComboVoice: true,
+          duckMusicWhileSpeaking: true
+        };
+        if (targetType === 'win_voice') {
+          cfg.voice.winVoiceUrl = relUrl;
+          cfg.voice.enableWinVoice = true;
+          bumpVersion(cfg, 'আম্মু, ফারাবীর নতুন জয়ের ভয়েস মেসেজ এসেছে! 🎙️❤️', 'জিতলে বা নতুন রেকর্ড করলে আমার কণ্ঠস্বর শুনতে পাবে!');
+        } else if (targetType === 'lose_voice') {
+          cfg.voice.loseVoiceUrl = relUrl;
+          cfg.voice.enableLoseVoice = true;
+          bumpVersion(cfg, 'আম্মু, ফারাবীর ভালোবাসার ভয়েস নোট এসেছে! 🎙️🌸', 'গেম ওভারে তোমার জন্য আমার উৎসাহের কথা!');
+        } else {
+          cfg.voice.comboVoiceUrl = relUrl;
+          cfg.voice.enableComboVoice = true;
+          bumpVersion(cfg, 'আম্মু, নতুন কম্বো ভয়েস যোগ হয়েছে! 🎙️✨', 'বড় কম্বো করলে ফারাবীর কণ্ঠ শুনবে!');
+        }
       }
 
       writeConfig(cfg);

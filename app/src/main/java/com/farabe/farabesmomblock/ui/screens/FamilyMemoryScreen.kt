@@ -62,6 +62,7 @@ import com.farabe.farabesmomblock.ui.theme.NavyBackground
 import com.farabe.farabesmomblock.ui.theme.RoseAccent
 import com.farabe.farabesmomblock.ui.theme.SoftCardBg
 import com.farabe.farabesmomblock.ui.theme.WarmCream
+import com.farabe.farabesmomblock.util.BitmapUtils
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -79,14 +80,14 @@ fun FamilyMemoryScreen(
     var photoBitmap by remember {
         mutableStateOf(
             if (localPhotoFile.exists()) {
-                BitmapFactory.decodeFile(localPhotoFile.absolutePath)
+                BitmapUtils.decodeBitmapFileWithExif(localPhotoFile)
             } else {
                 // Check if pre-bundled image exists in assets/custom_images
                 try {
                     val assetImages = context.assets.list("custom_images") ?: emptyArray()
                     val firstImage = assetImages.firstOrNull { it.endsWith(".jpg", true) || it.endsWith(".png", true) || it.endsWith(".webp", true) }
                     if (firstImage != null) {
-                        context.assets.open("custom_images/$firstImage").use { BitmapFactory.decodeStream(it) }
+                        BitmapUtils.decodeAssetWithExif(context, "custom_images/$firstImage")
                     } else null
                 } catch (e: Exception) {
                     null
@@ -105,7 +106,7 @@ fun FamilyMemoryScreen(
                         input.copyTo(output)
                     }
                 }
-                photoBitmap = BitmapFactory.decodeFile(localPhotoFile.absolutePath)
+                photoBitmap = BitmapUtils.decodeBitmapFileWithExif(localPhotoFile)
                 coroutineScope.launch {
                     repository.updateFamilyMemory(memory.title, memory.personalNote, localPhotoFile.absolutePath)
                 }

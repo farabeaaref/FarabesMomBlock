@@ -102,6 +102,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     // Active Game Mode
     val activeGameMode = MutableStateFlow("CLASSIC")
+    val isLevelCompleted = MutableStateFlow(false)
+    val lastClearedBurst = MutableStateFlow(0)
+    val isPlayingVoice = MutableStateFlow(false)
 
     // Daily surprise message
     val dailyMessage = MutableStateFlow<String?>(null)
@@ -387,6 +390,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val clearRes = result.lineClearResult
             if (clearRes != null && clearRes.hasClears) {
                 clearingCells.value = clearRes.clearedCells
+                lastClearedBurst.value = lastClearedBurst.value + 1
                 soundManager.playLineClear(clearRes.totalLinesCleared)
 
                 viewModelScope.launch {
@@ -401,6 +405,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val combo = result.comboEvent
             if (combo != null && combo.isComboActive) {
                 soundManager.playCombo(combo.streak)
+                if (combo.streak >= 3) {
+                    playComboVoice()
+                }
                 val bengaliTitle = when (combo.streak) {
                     2 -> "COMBO x2! দারুণ আম্মু! 🌸"
                     3 -> "COMBO x3! অসাধারণ মা! ✨"
@@ -411,6 +418,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 showBanner(bengaliTitle, combo.feedbackMessage)
             } else if (clearRes != null && clearRes.totalLinesCleared > 1) {
                 showBanner("MULTI-CLEAR! চমৎকার!", "+${result.scoreBreakdown?.linePoints} Points!")
+            }
+
+            val levelTarget = getLevelTargetScore()
+            if (levelTarget != null && !isLevelCompleted.value && engine.currentState.score >= levelTarget) {
+                isLevelCompleted.value = true
+                soundManager.playUnlockReward()
+                playWinVoice()
+                showBanner("LEVEL COMPLETE! 🎉🌟", "অভিনন্দন আম্মু! Target $levelTarget Reached!")
+                viewModelScope.launch {
+                    preferencesManager.addCoinsAndHearts(coinsDelta = 100, gemsDelta = 1)
+                }
             }
 
             // Auto save & milestone checks
@@ -426,9 +444,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Check game over
+            // Check game over -> trigger Farabe's Win/Lose Voice Note cleanly
             if (result.isGameOver) {
                 soundManager.playGameOver()
+                val isNewBest = engine.currentState.score >= engine.currentState.highScore && engine.currentState.score > 0
+                if (isNewBest || isLevelCompleted.value) {
+                    playWinVoice()
+                } else {
+                    playLoseVoice()
+                }
                 viewModelScope.launch {
                     repository.clearActiveSave()
                 }
@@ -473,6 +497,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startNewGame(mode: String = "CLASSIC") {
+        soundManager.stopVoice()
+        isPlayingVoice.value = false
+        isLevelCompleted.value = false
         activeGameMode.value = mode
         selectedPieceIndex.value = null
         activeDraggingIndex.value = null
@@ -486,6 +513,74 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             repository.clearActiveSave()
             repository.saveActiveGame(engine.currentState, mode)
             preferencesManager.incrementGamesPlayed()
+        }
+    }
+
+    fun onShowcasePoked() {
+        soundManager.playPiecePickup()
+        viewModelScope.launch {
+            preferencesManager.addCoinsAndHearts(coinsDelta = 5)
+        }
+    }
+
+    fun getLevelTargetScore(mode: String = activeGameMode.value): Int? {
+        return when (mode) {
+            "LEVEL_1" -> 300
+            "LEVEL_2" -> 600
+            "LEVEL_3" -> 1000
+            "LEVEL_4" -> 1500
+            "LEVEL_5" -> 2200
+            "LEVEL_6" -> 3500
+            else -> null
+        }
+    }
+
+    fun hasEndGameVoice(isWin: Boolean): Boolean {
+        val v = remoteConfig.value.voice
+        return if (isWin) {
+            v.enableWinVoice && remoteConfigManager.cachedWinVoiceFile.exists() && remoteConfigManager.cachedWinVoiceFile.length() > 0L
+        } else {
+            v.enableLoseVoice && remoteConfigManager.cachedLoseVoiceFile.exists() && remoteConfigManager.cachedLoseVoiceFile.length() > 0L
+        }
+    }
+
+    fun replayEndGameVoice(isWin: Boolean) {
+        if (isWin) playWinVoice() else playLoseVoice()
+    }
+
+    fun playWinVoice() {
+        val v = remoteConfig.value.voice
+        if (!v.enableWinVoice) return
+        val file = remoteConfigManager.cachedWinVoiceFile
+        if (file.exists() && file.length() > 0L) {
+            isPlayingVoice.value = true
+            soundManager.playVoiceClip(file, duckMusic = v.duckMusicWhileSpeaking) {
+                isPlayingVoice.value = false
+            }
+        }
+    }
+
+    fun playLoseVoice() {
+        val v = remoteConfig.value.voice
+        if (!v.enableLoseVoice) return
+        val file = remoteConfigManager.cachedLoseVoiceFile
+        if (file.exists() && file.length() > 0L) {
+            isPlayingVoice.value = true
+            soundManager.playVoiceClip(file, duckMusic = v.duckMusicWhileSpeaking) {
+                isPlayingVoice.value = false
+            }
+        }
+    }
+
+    fun playComboVoice() {
+        val v = remoteConfig.value.voice
+        if (!v.enableComboVoice) return
+        val file = remoteConfigManager.cachedComboVoiceFile
+        if (file.exists() && file.length() > 0L) {
+            isPlayingVoice.value = true
+            soundManager.playVoiceClip(file, duckMusic = v.duckMusicWhileSpeaking) {
+                isPlayingVoice.value = false
+            }
         }
     }
 

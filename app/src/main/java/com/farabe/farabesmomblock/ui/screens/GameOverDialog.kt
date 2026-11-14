@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Yard
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,11 +45,15 @@ import com.farabe.farabesmomblock.ui.theme.WarmCream
 fun GameOverDialog(
     score: Int,
     highScore: Int,
+    hasVoiceMessage: Boolean = false,
+    isPlayingVoice: Boolean = false,
+    isLevelWin: Boolean = false,
+    onReplayVoice: () -> Unit = {},
     onReplay: () -> Unit,
     onOpenGarden: () -> Unit,
     onHome: () -> Unit
 ) {
-    val isNewBest = score >= highScore && score > 0
+    val isNewBest = (score >= highScore && score > 0) || isLevelWin
 
     Dialog(onDismissRequest = { /* forced action */ }) {
         Surface(
@@ -135,6 +141,31 @@ fun GameOverDialog(
                         lineHeight = 17.sp,
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+
+                if (hasVoiceMessage) {
+                    Button(
+                        onClick = onReplayVoice,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6A1B9A)),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .padding(bottom = 8.dp)
+                    ) {
+                        Icon(
+                            if (isPlayingVoice) Icons.Default.GraphicEq else Icons.Default.VolumeUp,
+                            contentDescription = null,
+                            tint = GoldAccent
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(
+                            text = if (isPlayingVoice) "🔊 Playing Farabe's Voice..." else "🎙️ Hear Farabe's Voice Note",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
 
                 // Action Buttons

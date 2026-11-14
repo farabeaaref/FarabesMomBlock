@@ -59,9 +59,52 @@ data class FloatingScore(
 @Composable
 fun ParticleOverlay(
     activeScores: List<FloatingScore>,
+    burstTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
+    val confettiAlpha = remember { Animatable(0f) }
+    val confettiProgress = remember { Animatable(0f) }
+    val burstSeeds = remember {
+        val rnd = Random(77)
+        List(26) {
+            Triple(
+                (rnd.nextFloat() - 0.5f) * 520f,
+                (rnd.nextFloat() - 0.7f) * 520f,
+                listOf(GoldAccent, RoseAccent, Color(0xFF4FC3F7), Color(0xFF81C784), Color(0xFFFFD54F))[it % 5]
+            )
+        }
+    }
+
+    LaunchedEffect(burstTrigger) {
+        if (burstTrigger > 0) {
+            confettiProgress.snapTo(0f)
+            confettiAlpha.snapTo(1f)
+            launch { confettiProgress.animateTo(1f, tween(700)) }
+            launch {
+                delay(180)
+                confettiAlpha.animateTo(0f, tween(520))
+            }
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
+        if (confettiAlpha.value > 0.01f) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                val cx = size.width * 0.5f
+                val cy = size.height * 0.45f
+                val p = confettiProgress.value
+                val a = confettiAlpha.value
+                for ((dx, dy, col) in burstSeeds) {
+                    val px = cx + dx * p
+                    val py = cy + dy * p + (p * p * 180f)
+                    drawCircle(
+                        color = col.copy(alpha = a),
+                        radius = 7f * (1f - p * 0.45f),
+                        center = androidx.compose.ui.geometry.Offset(px, py)
+                    )
+                }
+            }
+        }
         for (score in activeScores) {
             FloatingScoreItem(score)
         }

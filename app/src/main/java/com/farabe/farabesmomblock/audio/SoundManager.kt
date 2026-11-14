@@ -27,12 +27,15 @@ class SoundManager(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.Default)
     private var musicJob: Job? = null
     private var customMediaPlayer: MediaPlayer? = null
+    private var voiceMediaPlayer: MediaPlayer? = null
+    private var isDucked: Boolean = false
 
     var sfxVolume: Float = 0.8f
     var musicVolume: Float = 0.5f
         set(value) {
             field = value
-            customMediaPlayer?.setVolume(value, value)
+            val effective = if (isDucked) value * 0.16f else value
+            customMediaPlayer?.setVolume(effective, effective)
         }
     var vibrationEnabled: Boolean = true
 
@@ -280,7 +283,65 @@ class SoundManager(private val context: Context) {
         playChime(notes, durations, volumeFactor = 0.7f)
     }
 
+    /**
+     * Plays Farabe's personal voice message (.wav/.mp3/.m4a/.ogg) for Mom with
+     * automatic background music ducking so Mom hears his voice crystal clear.
+     */
+    fun playVoiceClip(file: java.io.File, duckMusic: Boolean = true, onFinished: () -> Unit = {}) {
+        if (!file.exists() || file.length() <= 0L) {
+            onFinished()
+            return
+        }
+        stopVoice()
+        try {
+            if (duckMusic) {
+                isDucked = true
+                val duckedVol = (musicVolume * 0.16f).coerceAtLeast(0.02f)
+                customMediaPlayer?.setVolume(duckedVol, duckedVol)
+            }
+            val player = MediaPlayer().apply {
+                setDataSource(file.absolutePath)
+                setVolume(1.0f, 1.0f)
+                setOnCompletionListener {
+                    restoreMusicAfterVoice()
+                    onFinished()
+                }
+                setOnErrorListener { _, _, _ ->
+                    restoreMusicAfterVoice()
+                    onFinished()
+                    true
+                }
+                prepare()
+                start()
+            }
+            voiceMediaPlayer = player
+        } catch (_: Exception) {
+            restoreMusicAfterVoice()
+            onFinished()
+        }
+    }
+
+    fun stopVoice() {
+        try {
+            voiceMediaPlayer?.stop()
+            voiceMediaPlayer?.release()
+        } catch (_: Exception) {
+        } finally {
+            voiceMediaPlayer = null
+            restoreMusicAfterVoice()
+        }
+    }
+
+    private fun restoreMusicAfterVoice() {
+        isDucked = false
+        try {
+            customMediaPlayer?.setVolume(musicVolume, musicVolume)
+        } catch (_: Exception) {
+        }
+    }
+
     fun release() {
+        stopVoice()
         stopBackgroundMusic()
     }
 }

@@ -4,18 +4,22 @@ import android.view.Choreographer
 import android.view.Surface
 import android.view.TextureView
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.delay
 import com.google.android.filament.Box as FilamentBox
 import com.google.android.filament.Camera
 import com.google.android.filament.Colors
@@ -40,26 +44,43 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Real-time Google Filament 3D PBR Viewport for Jetpack Compose.
- * Renders a floating, touch-interactive cluster of metallic & clearcoat 3D gem blocks
- * and a golden star-crown jewel with physically based lighting over a transparent backdrop.
+ * Playful, interactive Real-Time Google Filament 3D PBR Showcase!
+ * Renders 4 candy-gem cubes + 2 orbiting star-gems that dance, bounce,
+ * cycle funny formations on tap, and spin smoothly with drag momentum.
  */
 @Composable
 fun Filament3DShowcase(
     accentColor: Color,
     goldColor: Color,
     isCelebrationActive: Boolean = false,
+    onBlockPoked: (pokeCount: Int, reactionText: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var userYawOffset by remember { mutableFloatStateOf(0f) }
     var userPitchOffset by remember { mutableFloatStateOf(0f) }
+    var yawVelocity by remember { mutableFloatStateOf(0f) }
+    var pitchVelocity by remember { mutableFloatStateOf(0f) }
+    var pokeCount by remember { mutableIntStateOf(0) }
 
     val controller = remember {
         FilamentShowcaseController()
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(16)
+            if (kotlin.math.abs(yawVelocity) > 0.05f || kotlin.math.abs(pitchVelocity) > 0.05f) {
+                userYawOffset += yawVelocity
+                userPitchOffset = (userPitchOffset + pitchVelocity).coerceIn(-45f, 45f)
+                yawVelocity *= 0.93f
+                pitchVelocity *= 0.90f
+            }
+        }
     }
 
     controller.userYaw = userYawOffset
@@ -74,13 +95,29 @@ fun Filament3DShowcase(
     }
 
     Box(
-        modifier = modifier.pointerInput(Unit) {
-            detectDragGestures { change, dragAmount ->
-                change.consume()
-                userYawOffset += dragAmount.x * 0.45f
-                userPitchOffset = (userPitchOffset + dragAmount.y * 0.35f).coerceIn(-45f, 45f)
+        modifier = modifier
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    pokeCount += 1
+                    controller.triggerPlayfulPoke(pokeCount % 4)
+                    val reactions = listOf(
+                        "হিহি! সুড়সুড়ি লাগছে আম্মু! 😄 (+5🪙)",
+                        "ওয়াও আম্মু! ড্যান্স টাইম! 💃 (+5🪙)",
+                        "চলো ব্লক মিলাই আম্মু! 🧩 (+5🪙)",
+                        "ভালোবাসা ও দোয়া আম্মু! ❤️ (+5🪙)"
+                    )
+                    onBlockPoked(pokeCount, reactions[(pokeCount - 1) % reactions.size])
+                }
             }
-        }
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    userYawOffset += dragAmount.x * 0.55f
+                    userPitchOffset = (userPitchOffset + dragAmount.y * 0.40f).coerceIn(-45f, 45f)
+                    yawVelocity = dragAmount.x * 0.42f
+                    pitchVelocity = dragAmount.y * 0.25f
+                }
+            }
     ) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
@@ -98,6 +135,8 @@ private class FilamentShowcaseController {
 
     companion object {
         private var initialized = false
+        private var cachedMaterialPayload: ByteArray? = null
+
         fun ensureInit() {
             if (!initialized) {
                 try {
@@ -113,6 +152,13 @@ private class FilamentShowcaseController {
     var userYaw: Float = 0f
     var userPitch: Float = 0f
     var boostSpin: Boolean = false
+    private var formationMode: Int = 0
+    private var lastPokeNanos: Long = 0L
+
+    fun triggerPlayfulPoke(nextFormation: Int) {
+        formationMode = nextFormation
+        lastPokeNanos = System.nanoTime()
+    }
 
     private var engine: Engine? = null
     private var renderer: Renderer? = null
@@ -256,33 +302,48 @@ private class FilamentShowcaseController {
     }
 
     private fun setupPbrCubes(eng: Engine) {
-        MaterialBuilder.init()
-        val pkg = MaterialBuilder()
-            .platform(MaterialBuilder.Platform.MOBILE)
-            .name("CandyGemPbr")
-            .shading(MaterialBuilder.Shading.LIT)
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "baseColor")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "metallicVal")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughnessVal")
-            .material(
-                """
-                void material(inout MaterialInputs material) {
-                    prepareMaterial(material);
-                    material.baseColor.rgb = materialParams.baseColor;
-                    material.metallic = materialParams.metallicVal;
-                    material.roughness = materialParams.roughnessVal;
-                    material.clearCoat = 1.0;
-                    material.clearCoatRoughness = 0.06;
-                }
-                """.trimIndent()
-            )
-            .build()
+        val payloadBytes = cachedMaterialPayload ?: run {
+            MaterialBuilder.init()
+            val pkg = MaterialBuilder()
+                .platform(MaterialBuilder.Platform.MOBILE)
+                .name("CandyGemPbr")
+                .shading(MaterialBuilder.Shading.LIT)
+                .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "baseColor")
+                .uniformParameter(MaterialBuilder.UniformType.FLOAT, "metallicVal")
+                .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughnessVal")
+                .material(
+                    """
+                    void material(inout MaterialInputs material) {
+                        prepareMaterial(material);
+                        material.baseColor.rgb = materialParams.baseColor;
+                        material.metallic = materialParams.metallicVal;
+                        material.roughness = materialParams.roughnessVal;
+                        material.clearCoat = 1.0;
+                        material.clearCoatRoughness = 0.06;
+                    }
+                    """.trimIndent()
+                )
+                .build()
 
-        if (pkg.isValid) {
-            val buf = pkg.buffer
-            pbrMaterial = Material.Builder().payload(buf, buf.remaining()).build(eng)
+            val bytes = if (pkg.isValid) {
+                val buf = pkg.buffer
+                ByteArray(buf.remaining()).also { arr ->
+                    buf.get(arr)
+                }
+            } else {
+                null
+            }
+            MaterialBuilder.shutdown()
+            cachedMaterialPayload = bytes
+            bytes
         }
-        MaterialBuilder.shutdown()
+
+        if (payloadBytes != null) {
+            val directBuf = ByteBuffer.allocateDirect(payloadBytes.size).order(ByteOrder.nativeOrder())
+            directBuf.put(payloadBytes)
+            directBuf.flip()
+            pbrMaterial = Material.Builder().payload(directBuf, directBuf.remaining()).build(eng)
+        }
 
         val mat = pbrMaterial ?: return
 
@@ -291,12 +352,14 @@ private class FilamentShowcaseController {
         vertexBuffer = vb
         indexBuffer = ib
 
-        // 4 floating 3D gem blocks arranged in a floating L-polyomino + golden jewel accent
+        // 4 main hero gem blocks + 2 orbiting golden/rose mini star-gems
         val gemSpecs = listOf(
             GemColorSpec(accentRgb[0], accentRgb[1], accentRgb[2], 0.12f, 0.15f), // Play emerald / accent
             GemColorSpec(0.95f, 0.25f, 0.58f, 0.15f, 0.14f),                     // Shapla magenta
             GemColorSpec(0.05f, 0.78f, 0.92f, 0.18f, 0.12f),                     // Jamdani cyan
-            GemColorSpec(goldRgb[0], goldRgb[1], goldRgb[2], 0.16f, 0.14f)       // Gold glossy crystal gem
+            GemColorSpec(goldRgb[0], goldRgb[1], goldRgb[2], 0.16f, 0.14f),      // Gold glossy crystal gem
+            GemColorSpec(1.0f, 0.85f, 0.35f, 0.25f, 0.10f),                      // Orbiting mini gold star
+            GemColorSpec(1.0f, 0.45f, 0.75f, 0.20f, 0.12f)                       // Orbiting mini rose heart-gem
         )
 
         for (spec in gemSpecs) {
@@ -326,33 +389,73 @@ private class FilamentShowcaseController {
         if (uiHelper?.isReadyToRender != true) return
 
         val elapsedSec = ((frameTimeNanos - startNanos) / 1_000_000_000.0).toFloat()
-        val speedMul = if (boostSpin) 2.6f else 1.0f
-        val baseAngle = elapsedSec * 36f * speedMul + userYaw
-        val pitchAngle = 18f + sin(elapsedSec * 1.1f) * 6f + userPitch
+        val pokeAge = if (lastPokeNanos > 0L) ((frameTimeNanos - lastPokeNanos) / 1_000_000_000.0).toFloat().coerceAtLeast(0f) else 10f
+        val pokeImpulse = if (pokeAge < 1.8f) exp(-2.8f * pokeAge) * sin(pokeAge * 14f) else 0f
+        val pokeSpinBoost = if (pokeAge < 1.5f) (1f - pokeAge / 1.5f) * 320f else 0f
+
+        val speedMul = if (boostSpin) 2.5f else 1.0f
+        val baseAngle = elapsedSec * 42f * speedMul + userYaw + pokeSpinBoost
+        val pitchAngle = 18f + sin(elapsedSec * 1.4f) * 8f + userPitch + pokeImpulse * 18f
 
         val tm = eng.transformManager
-        val offsets = arrayOf(
-            floatArrayOf(-0.68f, 0.18f, 0.0f),
-            floatArrayOf(0.0f, 0.18f, 0.0f),
-            floatArrayOf(0.68f, 0.18f, 0.0f),
-            floatArrayOf(0.0f, 0.86f, 0.1f)
-        )
+        val wavePhase = elapsedSec * 3.1f
+        val offsets = when (formationMode) {
+            1 -> arrayOf( // Samba Dance Wave
+                floatArrayOf(-0.82f, 0.1f + sin(wavePhase) * 0.28f, 0.0f),
+                floatArrayOf(-0.26f, 0.1f + sin(wavePhase + 1.0f) * 0.28f, 0.12f),
+                floatArrayOf(0.28f, 0.1f + sin(wavePhase + 2.0f) * 0.28f, 0.0f),
+                floatArrayOf(0.82f, 0.1f + sin(wavePhase + 3.0f) * 0.28f, 0.12f)
+            )
+            2 -> Array(4) { idx -> // Merry-Go-Round Carousel Orbit
+                val a = elapsedSec * 1.8f + idx * (PI.toFloat() * 0.5f)
+                floatArrayOf(cos(a) * 0.72f, 0.12f + sin(elapsedSec * 3f + idx) * 0.14f, sin(a) * 0.55f)
+            }
+            3 -> arrayOf( // Diamond / Heart Jump
+                floatArrayOf(-0.62f, 0.16f, 0.0f),
+                floatArrayOf(0.62f, 0.16f, 0.0f),
+                floatArrayOf(0.0f, -0.45f, 0.1f),
+                floatArrayOf(0.0f, 0.78f, 0.1f)
+            )
+            else -> arrayOf( // Playful Pyramid Stack
+                floatArrayOf(-0.66f, 0.16f, 0.0f),
+                floatArrayOf(0.0f, 0.16f, 0.0f),
+                floatArrayOf(0.66f, 0.16f, 0.0f),
+                floatArrayOf(0.0f, 0.84f, 0.1f)
+            )
+        }
 
         for (i in renderableEntities.indices) {
             val inst = tm.getInstance(renderableEntities[i])
             if (inst == 0) continue
 
-            val bob = sin(elapsedSec * 2.1f + i * 0.9f) * 0.07f
-            val localYaw = baseAngle + i * 14f
-            val m = buildTransformMatrix(
-                tx = offsets[i][0],
-                ty = offsets[i][1] + bob - 0.35f,
-                tz = offsets[i][2],
-                scale = if (i == 3) 0.52f else 0.56f,
-                yawDeg = localYaw,
-                pitchDeg = pitchAngle
-            )
-            tm.setTransform(inst, m)
+            if (i < 4) {
+                val bob = sin(elapsedSec * 2.4f + i * 0.9f) * 0.08f
+                val jumpHop = kotlin.math.abs(pokeImpulse) * (0.28f + i * 0.06f)
+                val pulseScale = (if (i == 3) 0.52f else 0.56f) * (1f + pokeImpulse * 0.16f)
+                val localYaw = baseAngle + i * 18f + sin(elapsedSec * 2f + i) * 10f
+                val m = buildTransformMatrix(
+                    tx = offsets[i][0],
+                    ty = offsets[i][1] + bob + jumpHop - 0.28f,
+                    tz = offsets[i][2],
+                    scale = pulseScale,
+                    yawDeg = localYaw,
+                    pitchDeg = pitchAngle + sin(elapsedSec * 2.2f + i) * 6f
+                )
+                tm.setTransform(inst, m)
+            } else {
+                // Orbiting mini companion star-gems
+                val orbitIdx = i - 4
+                val oa = elapsedSec * (2.6f + orbitIdx * 0.7f) + orbitIdx * PI.toFloat()
+                val m = buildTransformMatrix(
+                    tx = cos(oa) * 1.05f,
+                    ty = sin(elapsedSec * 3.2f + orbitIdx) * 0.45f + 0.15f + kotlin.math.abs(pokeImpulse) * 0.35f,
+                    tz = sin(oa) * 0.75f,
+                    scale = 0.22f + kotlin.math.abs(pokeImpulse) * 0.08f,
+                    yawDeg = baseAngle * 2.2f,
+                    pitchDeg = pitchAngle * 1.4f
+                )
+                tm.setTransform(inst, m)
+            }
         }
 
         if (r.beginFrame(sc, frameTimeNanos)) {

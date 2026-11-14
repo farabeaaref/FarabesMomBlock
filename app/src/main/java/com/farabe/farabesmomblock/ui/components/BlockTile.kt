@@ -44,6 +44,14 @@ fun BlockTile(
     cornerRadius: Dp = 8.dp
 ) {
     val scaleAnim = remember { Animatable(1f) }
+    val hasFilledColor = color != null && !isGhost
+
+    LaunchedEffect(hasFilledColor) {
+        if (hasFilledColor && !isClearing) {
+            scaleAnim.snapTo(1.16f)
+            scaleAnim.animateTo(1f, animationSpec = tween(durationMillis = 190))
+        }
+    }
 
     LaunchedEffect(isClearing) {
         if (isClearing) {

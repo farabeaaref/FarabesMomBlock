@@ -2,6 +2,7 @@ package com.farabe.farabesmomblock.ui.screens
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -221,7 +222,8 @@ fun MainHubScreen(
                         onRelaxQuickClick = { onPlayMode("RELAX") },
                         onLevelsClick = onOpenLevels,
                         onMusicClick = { selectedTab = HubTab.GIFTS },
-                        onLettersClick = { selectedTab = HubTab.HELPERS }
+                        onLettersClick = { selectedTab = HubTab.HELPERS },
+                        onShowcasePoke = { viewModel.onShowcasePoked() }
                     )
 
                     HubTab.ITEMS -> ItemsTabContent(
@@ -486,8 +488,17 @@ private fun HomeTabContent(
     onRelaxQuickClick: () -> Unit,
     onLevelsClick: () -> Unit,
     onMusicClick: () -> Unit,
-    onLettersClick: () -> Unit
+    onLettersClick: () -> Unit,
+    onShowcasePoke: () -> Unit = {}
 ) {
+    var cubeReactionText by remember { mutableStateOf<String?>(null) }
+    var reactionStamp by remember { mutableIntStateOf(0) }
+    LaunchedEffect(reactionStamp) {
+        if (reactionStamp > 0) {
+            kotlinx.coroutines.delay(2200)
+            cubeReactionText = null
+        }
+    }
     val milestoneTarget = ((highScore / 1000) + 1) * 1000
     val progress = ((highScore % 1000).toFloat() / 1000f).coerceIn(0.08f, 1f)
 
@@ -600,7 +611,7 @@ private fun HomeTabContent(
                 )
             }
 
-            // Center Real-Time Google Filament 3D PBR Crystal Block Showcase
+            // Center Real-Time Playful Google Filament 3D PBR Crystal Block Showcase
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -612,18 +623,40 @@ private fun HomeTabContent(
                     accentColor = theme.accentColor,
                     goldColor = theme.goldAccent,
                     isCelebrationActive = isCelebrating || hasUnclaimedGift,
+                    onBlockPoked = { _, msg ->
+                        cubeReactionText = msg
+                        reactionStamp += 1
+                        onShowcasePoke()
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
 
+                if (cubeReactionText != null) {
+                    Text(
+                        text = cubeReactionText ?: "",
+                        color = Color(0xFF3E1F00),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 6.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(theme.goldAccent)
+                            .border(1.5.dp, Color.White, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+
                 Text(
-                    text = "✦ Drag 3D Jewel ✦",
-                    color = Color.White.copy(alpha = 0.8f),
+                    text = "✦ Tap or Spin 3D Gems! ✦",
+                    color = Color.White.copy(alpha = 0.88f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color.Black.copy(alpha = 0.35f))
+                        .background(Color.Black.copy(alpha = 0.45f))
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
@@ -880,13 +913,7 @@ private fun SketchbookTabContent(
     }
     val localFamilyBitmap = remember(familyPhotoUri) {
         if (familyPhotoUri.isNullOrBlank()) null
-        else try {
-            context.contentResolver.openInputStream(Uri.parse(familyPhotoUri))?.use {
-                BitmapFactory.decodeStream(it)
-            }
-        } catch (_: Exception) {
-            null
-        }
+        else com.farabe.farabesmomblock.util.BitmapUtils.decodeUriWithExif(context, Uri.parse(familyPhotoUri))
     }
 
     Column(

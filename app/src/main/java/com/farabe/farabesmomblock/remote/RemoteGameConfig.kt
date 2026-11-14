@@ -38,6 +38,16 @@ data class RemoteMusic(
     val activeSongUrl: String = ""
 )
 
+data class RemoteVoiceConfig(
+    val winVoiceUrl: String = "",
+    val loseVoiceUrl: String = "",
+    val comboVoiceUrl: String = "",
+    val enableWinVoice: Boolean = true,
+    val enableLoseVoice: Boolean = true,
+    val enableComboVoice: Boolean = true,
+    val duckMusicWhileSpeaking: Boolean = true
+)
+
 data class RemoteGift(
     val giftId: String = "",
     val title: String = "Surprise Gift from Farabe! 🎁",
@@ -77,6 +87,7 @@ data class RemoteGameConfig(
     val background: RemoteBackground = RemoteBackground(),
     val images: RemoteImages = RemoteImages(),
     val music: RemoteMusic = RemoteMusic(),
+    val voice: RemoteVoiceConfig = RemoteVoiceConfig(),
     val activeGift: RemoteGift? = null,
     val customLetters: List<RemoteLetter> = emptyList(),
     val customTasks: List<RemoteTask> = emptyList(),
@@ -89,6 +100,7 @@ data class RemoteGameConfig(
             val bgObj = root.optJSONObject("background")
             val imgObj = root.optJSONObject("images")
             val musicObj = root.optJSONObject("music")
+            val voiceObj = root.optJSONObject("voice")
             val giftsObj = root.optJSONObject("gifts")
             val activeGiftObj = giftsObj?.optJSONObject("activeGift")
             val notifyObj = root.optJSONObject("notification")
@@ -150,6 +162,15 @@ data class RemoteGameConfig(
                     activeSongTitle = musicObj?.optString("activeSongTitle", "Calming Ambient Chimes (Default)")
                         ?: "Calming Ambient Chimes (Default)",
                     activeSongUrl = musicObj?.optString("activeSongUrl", "") ?: ""
+                ),
+                voice = RemoteVoiceConfig(
+                    winVoiceUrl = voiceObj?.optString("winVoiceUrl", "") ?: "",
+                    loseVoiceUrl = voiceObj?.optString("loseVoiceUrl", "") ?: "",
+                    comboVoiceUrl = voiceObj?.optString("comboVoiceUrl", "") ?: "",
+                    enableWinVoice = voiceObj?.optBoolean("enableWinVoice", true) ?: true,
+                    enableLoseVoice = voiceObj?.optBoolean("enableLoseVoice", true) ?: true,
+                    enableComboVoice = voiceObj?.optBoolean("enableComboVoice", true) ?: true,
+                    duckMusicWhileSpeaking = voiceObj?.optBoolean("duckMusicWhileSpeaking", true) ?: true
                 ),
                 activeGift = if (activeGiftObj != null) {
                     RemoteGift(

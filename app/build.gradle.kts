@@ -12,8 +12,8 @@ android {
         applicationId = "com.farabe.farabesmomblock"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -81,6 +81,9 @@ dependencies {
 
     // WorkManager for Background Update & Gift Notifications
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // EXIF Portrait Orientation Decoding for Mom's Photos
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // Unit Testing
     testImplementation("junit:junit:4.13.2")

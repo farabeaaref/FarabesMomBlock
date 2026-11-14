@@ -110,16 +110,17 @@ fun DynamicGameBackground(
             )
         }
 
-        // Subtle atmospheric twilight gradient overlay for readability
+        // Subtle atmospheric twilight gradient + center vignette so blocks always stand out cleanly over photos
+        val veilAlpha = if (customBitmap != null) 0.72f else 0.55f
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            primaryTint.copy(alpha = 0.55f),
-                            Color.Transparent,
-                            primaryTint.copy(alpha = 0.65f)
+                            primaryTint.copy(alpha = veilAlpha),
+                            primaryTint.copy(alpha = if (customBitmap != null) 0.30f else 0.08f),
+                            primaryTint.copy(alpha = veilAlpha + 0.08f)
                         )
                     )
                 )

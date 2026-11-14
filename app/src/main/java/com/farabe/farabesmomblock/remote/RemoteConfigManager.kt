@@ -49,6 +49,9 @@ class RemoteConfigManager(
     val cachedHelperAvatarFile: File get() = File(cacheDir, "helper_avatar.img")
     val cachedSketchbookFile: File get() = File(cacheDir, "sketchbook.img")
     val cachedRemoteSongFile: File get() = File(cacheDir, "remote_bg_music.mp3")
+    val cachedWinVoiceFile: File get() = File(cacheDir, "win_voice.aud")
+    val cachedLoseVoiceFile: File get() = File(cacheDir, "lose_voice.aud")
+    val cachedComboVoiceFile: File get() = File(cacheDir, "combo_voice.aud")
 
     private fun loadCachedConfig(): RemoteGameConfig {
         return try {
@@ -63,11 +66,7 @@ class RemoteConfigManager(
     }
 
     fun loadCachedBitmap(file: File): Bitmap? {
-        return try {
-            if (file.exists() && file.length() > 0) BitmapFactory.decodeFile(file.absolutePath) else null
-        } catch (_: Exception) {
-            null
-        }
+        return com.farabe.farabesmomblock.util.BitmapUtils.decodeBitmapFileWithExif(file)
     }
 
     private fun isLikelyEmulator(): Boolean {
@@ -127,6 +126,9 @@ class RemoteConfigManager(
                     songChanged = true
                     anyMediaChanged = true
                 }
+                anyMediaChanged = syncAsset("win_voice", remoteConfig.voice.winVoiceUrl, cachedWinVoiceFile, props) || anyMediaChanged
+                anyMediaChanged = syncAsset("lose_voice", remoteConfig.voice.loseVoiceUrl, cachedLoseVoiceFile, props) || anyMediaChanged
+                anyMediaChanged = syncAsset("combo_voice", remoteConfig.voice.comboVoiceUrl, cachedComboVoiceFile, props) || anyMediaChanged
 
                 urlIndexFile.outputStream().use { props.store(it, "Cached remote media URLs") }
 

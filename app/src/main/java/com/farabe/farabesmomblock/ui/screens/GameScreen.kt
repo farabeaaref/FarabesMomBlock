@@ -1,5 +1,8 @@
 package com.farabe.farabesmomblock.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -85,6 +88,10 @@ fun GameScreen(
     val bannerSubtitle by viewModel.bannerSubtitle.collectAsState()
     val remoteConfig by viewModel.remoteConfig.collectAsState()
     val mediaRevision by viewModel.mediaRevision.collectAsState()
+    val activeGameMode by viewModel.activeGameMode.collectAsState()
+    val isLevelCompleted by viewModel.isLevelCompleted.collectAsState()
+    val lastClearedBurst by viewModel.lastClearedBurst.collectAsState()
+    val isPlayingVoice by viewModel.isPlayingVoice.collectAsState()
     val remoteTheme = remoteConfig.theme
 
     val cachedGameBg = remember(mediaRevision) {
@@ -94,6 +101,18 @@ fun GameScreen(
     var isPaused by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val density = LocalDensity.current
+    val boardBumpY = remember { Animatable(0f) }
+
+    LaunchedEffect(lastClearedBurst) {
+        if (lastClearedBurst > 0) {
+            boardBumpY.animateTo(8f, tween(35))
+            boardBumpY.animateTo(0f, tween(55))
+        }
+    }
+
+    BackHandler(enabled = !gameState.isGameOver) {
+        isPaused = !isPaused
+    }
 
     LaunchedEffect(Unit) {
         viewModel.milestoneEvent.collectLatest { message ->
@@ -165,13 +184,51 @@ fun GameScreen(
                     onShuffleClick = { viewModel.shuffleTray() }
                 )
 
+                val levelTarget = viewModel.getLevelTargetScore(activeGameMode)
+                if (levelTarget != null) {
+                    val lvlProgress = (gameState.score.toFloat() / levelTarget.toFloat()).coerceIn(0f, 1f)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(remoteTheme.surfaceColor.copy(alpha = 0.88f))
+                            .border(1.dp, remoteTheme.goldAccent.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isLevelCompleted) "🌟 ${activeGameMode.replace('_', ' ')} CLEAR!" else "⭐ ${activeGameMode.replace('_', ' ')} Goal: ${gameState.score}/$levelTarget",
+                            color = if (isLevelCompleted) remoteTheme.accentColor else GoldAccent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(84.dp)
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF170B2A))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(lvlProgress)
+                                    .fillMaxHeight()
+                                    .background(if (isLevelCompleted) remoteTheme.accentColor else GoldAccent)
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(2.dp))
 
-                // Board View with Glowing Neon Landing Target Box
+                // Board View with Glowing Neon Landing Target Box + Soft Tactile Clear Bump
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
+                        .offset { IntOffset(0, boardBumpY.value.roundToInt()) },
                     contentAlignment = Alignment.Center
                 ) {
                     BoardView(
@@ -190,8 +247,27 @@ fun GameScreen(
                         }
                     )
 
-                    // Floating Score Text (+100, +300) Overlay
-                    ParticleOverlay(activeScores = floatingScores)
+                    // Floating Score Text (+100, +300) + Confetti Burst Overlay
+                    ParticleOverlay(
+                        activeScores = floatingScores,
+                        burstTrigger = lastClearedBurst
+                    )
+
+                    if (isPlayingVoice) {
+                        Text(
+                            text = "🎙️ Farabe is speaking to Mom...",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 6.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0xFF6A1B9A).copy(alpha = 0.92f))
+                                .border(1.dp, GoldAccent, RoundedCornerShape(14.dp))
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                    }
 
                     // Combo celebration banner overlay
                     ComboBanner(
@@ -320,10 +396,11 @@ fun GameScreen(
                     onResume = { isPaused = false },
                     onRestart = {
                         isPaused = false
-                        viewModel.startNewGame()
+                        viewModel.startNewGame(activeGameMode)
                     },
                     onHome = {
                         isPaused = false
+                        viewModel.soundManager.stopVoice()
                         onHomeClick()
                     },
                     sfxVolume = userSettings.soundEffectsVolume,
@@ -336,14 +413,25 @@ fun GameScreen(
 
             // Game Over Dialog
             if (gameState.isGameOver) {
+                val isWinEnd = (gameState.score >= gameState.highScore && gameState.score > 0) || isLevelCompleted
                 GameOverDialog(
                     score = gameState.score,
                     highScore = gameState.highScore,
+                    hasVoiceMessage = viewModel.hasEndGameVoice(isWinEnd),
+                    isPlayingVoice = isPlayingVoice,
+                    isLevelWin = isLevelCompleted,
+                    onReplayVoice = { viewModel.replayEndGameVoice(isWinEnd) },
                     onReplay = {
-                        viewModel.startNewGame()
+                        viewModel.startNewGame(activeGameMode)
                     },
-                    onOpenGarden = onOpenGarden,
-                    onHome = onHomeClick
+                    onOpenGarden = {
+                        viewModel.soundManager.stopVoice()
+                        onOpenGarden()
+                    },
+                    onHome = {
+                        viewModel.soundManager.stopVoice()
+                        onHomeClick()
+                    }
                 )
             }
         }

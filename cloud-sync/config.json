@@ -1,12 +1,12 @@
 {
-  "configVersion": 11,
+  "configVersion": 15,
   "appVersionCode": 2,
   "appVersionName": "1.1.0",
   "appDownloadUrl": "",
   "githubRawBaseUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync",
   "voice": {
-    "winVoiceUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync/uploads/1794656661611_test_win.wav",
-    "loseVoiceUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync/uploads/1794656661632_test_lose.wav",
+    "winVoiceUrl": "",
+    "loseVoiceUrl": "",
     "comboVoiceUrl": "",
     "enableWinVoice": true,
     "enableLoseVoice": true,
@@ -70,9 +70,9 @@
     ]
   },
   "notification": {
-    "notifyId": "notify_11_1794656661633",
-    "title": "আম্মু, ফারাবীর ভালোবাসার ভয়েস নোট এসেছে! 🎙️🌸",
-    "body": "গেম ওভারে তোমার জন্য আমার উৎসাহের কথা!",
-    "timestamp": "2026-11-14T11:44:21.633Z"
+    "notifyId": "notify_15_1794657274192",
+    "title": "আম্মু, গেমের নতুন ভার্সন v1.1.0 এসেছে! 🌸❤️",
+    "body": "সোজা ছবি, মজার 3D ব্লক ও ফারাবীর ভয়েস সিস্টেম যোগ হয়েছে!",
+    "timestamp": "2026-11-14T11:54:34.192Z"
   }
 }
