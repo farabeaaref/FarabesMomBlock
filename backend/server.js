@@ -220,32 +220,90 @@ const server = http.createServer(async (req, res) => {
       const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').replace('::ffff:', '');
 
       players[playerId] = {
+        ...prev,
         playerId,
         playerName: body.playerName || prev.playerName || 'Mom ❤️',
         deviceModel: body.deviceModel || prev.deviceModel || 'Android Phone',
         appVersion: body.appVersion || prev.appVersion || '1.2.0',
         currentActivity: body.currentActivity || 'Playing Game',
+        screenState: body.screenState || prev.screenState || 'Home Hub',
+        isInGame: Boolean(body.isInGame),
+        isPaused: Boolean(body.isPaused),
+        isLevelCompleted: Boolean(body.isLevelCompleted),
+        isGameOver: Boolean(body.isGameOver),
         gameMode: body.gameMode || 'LEVEL_1',
+        currentLevelNumber: Number(body.currentLevelNumber ?? prev.currentLevelNumber ?? 0),
+        currentLevelTitle: body.currentLevelTitle || prev.currentLevelTitle || 'Challenge',
+        levelTargetScore: Number(body.levelTargetScore ?? prev.levelTargetScore ?? 0),
+        levelTargetLines: Number(body.levelTargetLines ?? prev.levelTargetLines ?? 0),
         currentScore: Number(body.currentScore ?? prev.currentScore ?? 0),
+        linesInCurrentRound: Number(body.linesInCurrentRound ?? prev.linesInCurrentRound ?? 0),
+        movesInCurrentRound: Number(body.movesInCurrentRound ?? prev.movesInCurrentRound ?? 0),
+        currentRoundSeconds: Number(body.currentRoundSeconds ?? prev.currentRoundSeconds ?? 0),
         highScore: Number(body.highScore ?? prev.highScore ?? 0),
         coins: Number(body.coins ?? prev.coins ?? 500),
         hearts: Number(body.hearts ?? prev.hearts ?? 5),
         gems: Number(body.gems ?? prev.gems ?? 5),
+        farabeHelperLevel: Number(body.farabeHelperLevel ?? prev.farabeHelperLevel ?? 1),
+        kittenHelperLevel: Number(body.kittenHelperLevel ?? prev.kittenHelperLevel ?? 1),
         highestUnlockedLevel: Number(body.highestUnlockedLevel ?? prev.highestUnlockedLevel ?? 1),
         completedLevelsCount: Number(body.completedLevelsCount ?? prev.completedLevelsCount ?? 0),
+        completedLevels: Array.isArray(body.completedLevels) ? body.completedLevels : (prev.completedLevels || []),
+        claimedGiftsCount: Number(body.claimedGiftsCount ?? prev.claimedGiftsCount ?? 0),
+        lastClaimedGiftId: body.lastClaimedGiftId || prev.lastClaimedGiftId || '',
+        lastClaimedGiftTitle: body.lastClaimedGiftTitle || prev.lastClaimedGiftTitle || '',
+        claimedTasks: Array.isArray(body.claimedTasks) ? body.claimedTasks : (prev.claimedTasks || []),
         totalGamesPlayed: Number(body.totalGamesPlayed ?? prev.totalGamesPlayed ?? 0),
         totalLinesCleared: Number(body.totalLinesCleared ?? prev.totalLinesCleared ?? 0),
         sessionActiveSeconds: Number(body.sessionActiveSeconds ?? prev.sessionActiveSeconds ?? 0),
         totalPlayTimeSeconds: Number(body.totalPlayTimeSeconds ?? prev.totalPlayTimeSeconds ?? 0),
+        recentEvents: Array.isArray(body.recentEvents) && body.recentEvents.length > 0 ? body.recentEvents : (prev.recentEvents || []),
         isForeground: body.isForeground !== false,
         ipAddress: clientIp || prev.ipAddress || 'local',
         firstSeenAt: prev.firstSeenAt || new Date(now).toISOString(),
         lastSeenAt: new Date(now).toISOString(),
-        lastHeartbeatMs: now
+        lastHeartbeatMs: now,
+        pendingCommand: prev.pendingCommand || null
       };
 
+      const pendingCommand = players[playerId].pendingCommand || null;
+      if (pendingCommand) {
+        players[playerId].pendingCommand = null;
+      }
+
       writePlayers(players);
-      return sendJson(res, 200, { ok: true, serverTimeMs: now });
+      return sendJson(res, 200, { ok: true, serverTimeMs: now, pendingCommand });
+    }
+
+    // 3B-2. Queue a Live Remote-Control Command for a Specific Family Player (or ALL)
+    if (req.method === 'POST' && pathname === '/api/player-command') {
+      const body = await readJsonBody(req);
+      const players = readPlayers();
+      const targetId = body.playerId || 'ALL';
+      const cmd = {
+        commandId: `cmd_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        action: body.action || body.type || 'FORCE_SYNC',
+        level: Number(body.level || 1),
+        launchNow: Boolean(body.launchNow || body.autoStart),
+        title: body.title || 'Surprise Gift from Farabe! 🎁',
+        message: body.message || 'আম্মু ও পরিবারের জন্য বিশেষ উপহার ❤️',
+        coins: Number(body.coins || 300),
+        hearts: Number(body.hearts || 3),
+        coinsDelta: Number(body.coinsDelta || 0),
+        heartsDelta: Number(body.heartsDelta || 0),
+        gemsDelta: Number(body.gemsDelta || 0),
+        createdAt: new Date().toISOString()
+      };
+
+      let affected = 0;
+      for (const pid of Object.keys(players)) {
+        if (targetId === 'ALL' || pid === targetId) {
+          players[pid].pendingCommand = cmd;
+          affected++;
+        }
+      }
+      writePlayers(players);
+      return sendJson(res, 200, { ok: true, affected, command: cmd });
     }
 
     // 3C. Get Active & Recent Players List for Admin Studio

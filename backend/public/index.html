@@ -766,46 +766,120 @@
       container.innerHTML = latestPlayersList.map(p => {
         const sessionSec = (p.liveSessionSeconds || 0) + (p.isOnline ? driftSec : 0);
         const totalSec = (p.liveTotalSeconds || 0) + (p.isOnline ? driftSec : 0);
+        const roundSec = (p.currentRoundSeconds || 0) + (p.isOnline && p.isInGame && !p.isPaused ? driftSec : 0);
         const lastSeenSec = (p.secondsSinceLastSeen || 0) + driftSec;
+        const completedSet = new Set(Array.isArray(p.completedLevels) ? p.completedLevels : []);
+        const unlockedLvl = Number(p.highestUnlockedLevel || 1);
+
         const statusHtml = p.isOnline
-          ? `<span style="color:#4ade80; font-weight:800; font-size:12px;"><span class="pulse-dot"></span>LIVE PLAYING</span>`
+          ? (p.isPaused
+              ? `<span style="color:#fbbf24; font-weight:800; font-size:12px;">⏸️ PAUSED IN GAME</span>`
+              : `<span style="color:#4ade80; font-weight:800; font-size:12px;"><span class="pulse-dot"></span>LIVE ACTIVE</span>`)
           : (p.isIdle
               ? `<span style="color:#fbbf24; font-weight:700; font-size:12px;">🟡 IDLE (${formatLastSeen(lastSeenSec)})</span>`
               : `<span style="color:#9ca3af; font-weight:600; font-size:12px;">⚪ Offline (${formatLastSeen(lastSeenSec)})</span>`);
 
+        // 12-Level Campaign Visual Map
+        let levelMapHtml = '';
+        for (let lvl = 1; lvl <= 12; lvl++) {
+          const isDone = completedSet.has(lvl);
+          const isCurrentPlaying = p.isInGame && Number(p.currentLevelNumber) === lvl;
+          const isUnlocked = lvl <= unlockedLvl || isDone;
+          const bg = isCurrentPlaying ? '#5fd63a' : (isDone ? '#16a34a' : (isUnlocked ? '#7c3aed' : '#1f1235'));
+          const col = isCurrentPlaying ? '#052e16' : '#fff';
+          const icon = isCurrentPlaying ? '🎯' : (isDone ? '✅' : (isUnlocked ? '🔓' : '🔒'));
+          levelMapHtml += `<span style="background:${bg}; color:${col}; border:1px solid rgba(255,255,255,0.22); border-radius:8px; padding:2px 6px; font-size:10px; font-weight:800;">${icon} L${lvl}</span>`;
+        }
+
+        const eventsList = Array.isArray(p.recentEvents) && p.recentEvents.length
+          ? p.recentEvents.slice(0, 8).map(ev => `<div style="padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.06);">${ev}</div>`).join('')
+          : `<div>No recent events yet.</div>`;
+
+        const levelSelectOptions = Array.from({length: 12}, (_, i) => i + 1)
+          .map(l => `<option value="${l}" ${l === unlockedLvl ? 'selected' : ''}>Level ${l}</option>`).join('');
+
         return `
-          <div class="player-card ${p.isOnline ? 'online' : ''}">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <div class="player-card ${p.isOnline ? 'online' : ''}" style="grid-column: 1 / -1;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
               <div>
-                <div style="font-size:16px; font-weight:800; color:#fff;">👩 ${p.playerName}</div>
+                <div style="font-size:17px; font-weight:800; color:#fff;">👨‍👩‍👧‍👦 ${p.playerName} <span style="font-size:11px; color:var(--gold); font-weight:700;">(ID: ${p.playerId})</span></div>
                 <div style="font-size:11px; color:var(--muted); margin-top:2px;">📱 ${p.deviceModel} • v${p.appVersion} • IP: ${p.ipAddress || 'local'}</div>
               </div>
               <div>${statusHtml}</div>
             </div>
 
-            <div style="margin-top:10px; padding:8px 12px; border-radius:10px; background:rgba(0,0,0,0.32); border:1px solid rgba(255,255,255,0.12); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <!-- Live Screen / Level Entry-Exit & Active Timers -->
+            <div style="margin-top:10px; padding:10px 14px; border-radius:12px; background:rgba(0,0,0,0.36); border:1px solid rgba(255,255,255,0.16); display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
               <div>
-                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Current Activity</div>
-                <div style="font-size:13px; font-weight:800; color:var(--gold);">🎮 ${p.currentActivity}</div>
+                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Live Screen &amp; Level Status</div>
+                <div style="font-size:13px; font-weight:800; color:var(--gold); margin-top:2px;">${p.currentActivity}</div>
+                <div style="font-size:11px; color:#c4b5fd; margin-top:2px;">Screen: <strong>${p.screenState || 'Home Hub'}</strong> • Mode: <strong>${p.gameMode}</strong></div>
               </div>
-              <div style="text-align:right;">
-                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">⏱️ Session Active / Total Time</div>
-                <div style="font-size:13px; font-weight:800; color:#86efac;">${formatDuration(sessionSec)} <span style="color:var(--muted); font-weight:600;">(Total: ${formatDuration(totalSec)})</span></div>
+              <div>
+                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">⏱️ Active Play Time Breakdown</div>
+                <div style="font-size:13px; font-weight:800; color:#86efac; margin-top:2px;">
+                  Session: ${formatDuration(sessionSec)} • Total: ${formatDuration(totalSec)}
+                </div>
+                <div style="font-size:11px; color:var(--muted); margin-top:2px;">
+                  Current Level/Round Time: <strong>${formatDuration(roundSec)}</strong> • Moves: <strong>${p.movesInCurrentRound || 0}</strong>
+                </div>
               </div>
             </div>
 
+            <!-- 12-Stage Challenge Progression Strip -->
+            <div style="margin-top:10px;">
+              <div style="font-size:11px; color:var(--muted); font-weight:700; margin-bottom:5px;">
+                👑 12-Stage Challenge Roadmap (Unlocked: Lv.${unlockedLvl}/12 • Completed: ${p.completedLevelsCount || 0}/12):
+              </div>
+              <div style="display:flex; flex-wrap:wrap; gap:5px;">${levelMapHtml}</div>
+            </div>
+
+            <!-- Full Player Stats Pills -->
             <div class="stat-pills">
-              <span class="stat-pill">🏆 Score: ${p.currentScore} (Best: ${p.highScore})</span>
-              <span class="stat-pill">⭐ Challenge: Lv.${p.highestUnlockedLevel}/12 (${p.completedLevelsCount} Won)</span>
+              <span class="stat-pill">🏆 Score: ${p.currentScore} (All-Time Best: ${p.highScore})</span>
               <span class="stat-pill">🪙 ${Number(p.coins).toLocaleString()} Coins</span>
               <span class="stat-pill">❤️ ${p.hearts} Hearts</span>
               <span class="stat-pill">💎 ${p.gems} Gems</span>
-              <span class="stat-pill">📏 ${p.totalLinesCleared} Lines</span>
-              <span class="stat-pill">🎲 ${p.totalGamesPlayed} Games</span>
+              <span class="stat-pill">🎁 Gifts Claimed: ${p.claimedGiftsCount || 0} ${p.lastClaimedGiftTitle ? `("${p.lastClaimedGiftTitle}")` : ''}</span>
+              <span class="stat-pill">✅ Quests Claimed: ${(p.claimedTasks || []).length}/6</span>
+              <span class="stat-pill">🤝 Helpers: Farabe Lv.${p.farabeHelperLevel || 1} • Kitten Lv.${p.kittenHelperLevel || 1}</span>
+              <span class="stat-pill">📏 ${p.totalLinesCleared} Total Lines</span>
+              <span class="stat-pill">🎲 ${p.totalGamesPlayed} Rounds Played</span>
+            </div>
+
+            <!-- Live Per-Player Remote Control Panel -->
+            <div style="margin-top:12px; padding:10px 12px; border-radius:12px; background:rgba(91,33,182,0.22); border:1px solid rgba(167,139,250,0.35); display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+              <strong style="font-size:12px; color:var(--gold);">🎛️ Live Control for ${p.playerName}:</strong>
+              <select id="lvlSel_${p.playerId}" style="width:auto; padding:5px 8px; font-size:12px;">
+                ${levelSelectOptions}
+              </select>
+              <button class="btn btn-purple" style="width:auto; margin:0; padding:6px 10px; font-size:11px;" onclick="sendPlayerCmd('${p.playerId}','SET_LEVEL',{level:Number(document.getElementById('lvlSel_${p.playerId}').value),launchNow:false})">🔓 Unlock/Set Level</button>
+              <button class="btn btn-green" style="width:auto; margin:0; padding:6px 10px; font-size:11px;" onclick="sendPlayerCmd('${p.playerId}','SET_LEVEL',{level:Number(document.getElementById('lvlSel_${p.playerId}').value),launchNow:true})">🚀 Launch Level on Phone</button>
+              <button class="btn btn-pink" style="width:auto; margin:0; padding:6px 10px; font-size:11px;" onclick="sendPlayerCmd('${p.playerId}','SEND_GIFT',{title:'Special Gift for ${p.playerName}! 🎁',message:'ফারাবীর পক্ষ থেকে তোমার জন্য বিশেষ উপহার ❤️',coins:400,hearts:3})">🎁 Send +400🪙 &amp; +3❤️ Popup</button>
+              <button class="btn btn-purple" style="width:auto; margin:0; padding:6px 10px; font-size:11px;" onclick="sendPlayerCmd('${p.playerId}','ADD_RESOURCES',{coinsDelta:500,heartsDelta:5,gemsDelta:3})">✨ +500🪙 +5❤️ +3💎</button>
+              <button class="btn btn-purple" style="width:auto; margin:0; padding:6px 10px; font-size:11px;" onclick="sendPlayerCmd('${p.playerId}','FORCE_SYNC',{})">🔄 Force Sync</button>
+            </div>
+
+            <!-- Live Chronological Activity Event Log (Entry / Exit / Levels / Gifts) -->
+            <div style="margin-top:10px; background:#120722; border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:8px 12px; font-size:11px; color:#d8b4fe; max-height:130px; overflow:auto;">
+              <div style="font-weight:800; color:var(--gold); margin-bottom:4px;">📜 Live Entry / Exit / Level &amp; Gift Event Timeline:</div>
+              ${eventsList}
             </div>
           </div>
         `;
       }).join('');
+    }
+
+    async function sendPlayerCmd(playerId, action, extra) {
+      const res = await fetch('/api/player-command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId, action, ...(extra || {}) })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(`⚡ Sent ${action} to player! Executes within 3 seconds.`);
+      }
     }
 
     async function fetchActivePlayers() {

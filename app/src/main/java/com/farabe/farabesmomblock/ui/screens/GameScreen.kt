@@ -113,7 +113,9 @@ fun GameScreen(
     }
 
     BackHandler(enabled = !gameState.isGameOver) {
-        isPaused = !isPaused
+        val nextPaused = !isPaused
+        isPaused = nextPaused
+        viewModel.onPauseStateChanged(nextPaused)
     }
 
     LaunchedEffect(Unit) {
@@ -175,7 +177,10 @@ fun GameScreen(
                     highScore = gameState.highScore,
                     comboStreak = gameState.comboStreak,
                     seedsCount = userSettings.coins,
-                    onPauseClick = { isPaused = true }
+                    onPauseClick = {
+                        isPaused = true
+                        viewModel.onPauseStateChanged(true)
+                    }
                 )
 
                 // Power-Ups Toolbar (Undo, Hint, Shuffle)
@@ -400,7 +405,10 @@ fun GameScreen(
             // Pause Dialog
             if (isPaused) {
                 PauseDialog(
-                    onResume = { isPaused = false },
+                    onResume = {
+                        isPaused = false
+                        viewModel.onPauseStateChanged(false)
+                    },
                     onRestart = {
                         isPaused = false
                         viewModel.startNewGame(activeGameMode)
@@ -408,13 +416,17 @@ fun GameScreen(
                     onHome = {
                         isPaused = false
                         viewModel.soundManager.stopVoice()
+                        viewModel.onExitGameToHome()
                         onHomeClick()
                     },
                     sfxVolume = userSettings.soundEffectsVolume,
                     musicVolume = userSettings.musicVolume,
                     onSfxVolumeChanged = { viewModel.updateSfxVolume(it) },
                     onMusicVolumeChanged = { viewModel.updateMusicVolume(it) },
-                    onDismiss = { isPaused = false }
+                    onDismiss = {
+                        isPaused = false
+                        viewModel.onPauseStateChanged(false)
+                    }
                 )
             }
 
@@ -438,10 +450,12 @@ fun GameScreen(
                     },
                     onOpenGarden = {
                         viewModel.soundManager.stopVoice()
+                        viewModel.updateCurrentScreenActivity("Mom's Garden Sanctuary")
                         onOpenGarden()
                     },
                     onHome = {
                         viewModel.soundManager.stopVoice()
+                        viewModel.onExitGameToHome()
                         onHomeClick()
                     }
                 )

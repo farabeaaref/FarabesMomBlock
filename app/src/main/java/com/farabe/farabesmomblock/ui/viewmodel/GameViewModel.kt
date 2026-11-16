@@ -109,11 +109,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val lastClearedBurst = MutableStateFlow(0)
     val isPlayingVoice = MutableStateFlow(false)
 
-    // Live Telemetry Session Tracking
+    // Live Telemetry Session Tracking & Detailed Event Timeline
     private var sessionActiveSeconds: Int = 0
+    private var currentRoundSeconds: Int = 0
+    private var isCurrentlyInGame: Boolean = false
+    private var isCurrentlyPaused: Boolean = false
     private var isAppInForeground: Boolean = true
-    private var currentScreenName: String = "Home Hub"
-    private val deviceIdFallback: String = "mom_${android.os.Build.MODEL.replace(" ", "_")}_${(1000..9999).random()}"
+    private var currentScreenName: String = "Home Hub (Home)"
+    private val recentEvents = ArrayDeque<String>()
+    private val hardwareDeviceId: String = try {
+        android.provider.Settings.Secure.getString(
+            application.contentResolver,
+            android.provider.Settings.Secure.ANDROID_ID
+        )?.takeIf { it.isNotBlank() } ?: "dev_${android.os.Build.MODEL.replace(" ", "_")}"
+    } catch (_: Throwable) {
+        "dev_${android.os.Build.MODEL.replace(" ", "_")}"
+    }
+    private val deviceIdFallback: String get() = hardwareDeviceId
 
     // Daily surprise message
     val dailyMessage = MutableStateFlow<String?>(null)
@@ -164,23 +176,38 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             checkForUpdate()
         }
 
-        // Real-time Active Player Heartbeat loop (every 5 seconds while app is open)
+        // Real-time Active Player Heartbeat loop (every 3 seconds while app is open)
         viewModelScope.launch {
-            delay(1500)
+            delay(1000)
+            logPlayerEvent("🟢 Opened Game App (Home Hub)")
             pushTelemetryNow()
             while (true) {
-                delay(5000)
+                delay(3000)
                 if (isAppInForeground) {
-                    sessionActiveSeconds += 5
-                    preferencesManager.recordActivePlayTime(5, deviceIdFallback)
+                    sessionActiveSeconds += 3
+                    if (isCurrentlyInGame && !isCurrentlyPaused && !_gameState.value.isGameOver && !isLevelCompleted.value) {
+                        currentRoundSeconds += 3
+                    }
+                    preferencesManager.recordActivePlayTime(3, deviceIdFallback)
                     pushTelemetryNow()
                 }
             }
         }
     }
 
+    private fun logPlayerEvent(description: String) {
+        val timeStr = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+        synchronized(recentEvents) {
+            recentEvents.addFirst("$timeStr — $description")
+            while (recentEvents.size > 20) {
+                recentEvents.removeLast()
+            }
+        }
+    }
+
     fun onAppForegroundChanged(inForeground: Boolean) {
         isAppInForeground = inForeground
+        logPlayerEvent(if (inForeground) "🟢 Resumed App (Foreground)" else "⚪ Minimized App (Background)")
         viewModelScope.launch {
             pushTelemetryNow()
         }
@@ -188,7 +215,50 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateCurrentScreenActivity(label: String) {
         currentScreenName = label
+        if (!label.startsWith("Playing")) {
+            isCurrentlyInGame = false
+            isCurrentlyPaused = false
+        }
+        logPlayerEvent("📍 Screen -> $label")
         viewModelScope.launch {
+            pushTelemetryNow()
+        }
+    }
+
+    fun onPauseStateChanged(paused: Boolean) {
+        if (!isCurrentlyInGame || isCurrentlyPaused == paused) return
+        isCurrentlyPaused = paused
+        val stg = getLevelStage(activeGameMode.value)
+        val modeLabel = if (stg != null) "Level ${stg.levelNumber}: ${stg.title}" else activeGameMode.value
+        val score = _gameState.value.score
+        currentScreenName = if (paused) "Paused in $modeLabel (Score: $score)" else "Playing $modeLabel"
+        logPlayerEvent(if (paused) "⏸️ Paused $modeLabel at Score $score" else "▶️ Resumed $modeLabel")
+        viewModelScope.launch {
+            pushTelemetryNow()
+        }
+    }
+
+    fun onExitGameToHome() {
+        if (!isCurrentlyInGame) return
+        val stg = getLevelStage(activeGameMode.value)
+        val modeLabel = if (stg != null) "Level ${stg.levelNumber}: ${stg.title}" else activeGameMode.value
+        val score = _gameState.value.score
+        isCurrentlyInGame = false
+        isCurrentlyPaused = false
+        currentScreenName = "Home Hub (Home)"
+        logPlayerEvent("🚪 Exited $modeLabel -> Home Hub (Played ${currentRoundSeconds}s, Score: $score)")
+        viewModelScope.launch {
+            pushTelemetryNow()
+        }
+    }
+
+    fun updateFamilyPlayerName(newName: String) {
+        val clean = newName.trim().ifBlank { "Mom" }
+        viewModelScope.launch {
+            preferencesManager.updateMomName(clean)
+            logPlayerEvent("👨‍👩‍👧‍👦 Switched Family Player to: $clean")
+            lastSyncBanner.value = "❤️ Active Player: $clean"
+            delay(150)
             pushTelemetryNow()
         }
     }
@@ -196,29 +266,128 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun pushTelemetryNow() {
         val s = _userSettings.value
         val g = _gameState.value
-        val pid = s.playerId.ifBlank { deviceIdFallback }
+        val nameSlug = s.momName.trim().lowercase().replace(Regex("[^a-z0-9]"), "_").ifBlank { "mom" }
+        val pid = "${hardwareDeviceId}_$nameSlug"
         val devModel = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} (Android ${android.os.Build.VERSION.RELEASE})"
+        val stage = getLevelStage(activeGameMode.value)
+
+        val detailedActivity = when {
+            !isAppInForeground -> "⚪ App in Background ($currentScreenName)"
+            isCurrentlyInGame && isLevelCompleted.value -> "🏆 Won ${stage?.let { "Lv.${it.levelNumber} ${it.title}" } ?: activeGameMode.value} (Score: ${g.score})"
+            isCurrentlyInGame && g.isGameOver -> "💔 Game Over in ${activeGameMode.value} (Score: ${g.score})"
+            isCurrentlyInGame && isCurrentlyPaused -> "⏸️ Paused in ${stage?.let { "Lv.${it.levelNumber} ${it.title}" } ?: activeGameMode.value} (Score: ${g.score})"
+            isCurrentlyInGame && stage != null -> "🎮 Playing Lv.${stage.levelNumber}: ${stage.title} (${g.score}/${stage.targetScore} pts • ${g.linesClearedTotal}/${stage.targetLines} lines)"
+            isCurrentlyInGame -> "🎮 Playing ${activeGameMode.value} (Score: ${g.score} • Lines: ${g.linesClearedTotal})"
+            else -> "🏠 $currentScreenName"
+        }
+
+        val eventsArr = org.json.JSONArray()
+        synchronized(recentEvents) {
+            for (ev in recentEvents) eventsArr.put(ev)
+        }
+        val completedArr = org.json.JSONArray()
+        for (lvl in s.completedLevels.sorted()) completedArr.put(lvl)
+        val claimedTasksArr = org.json.JSONArray()
+        for (tid in s.claimedTaskIds) claimedTasksArr.put(tid)
+
         val json = org.json.JSONObject().apply {
             put("playerId", pid)
             put("playerName", s.momName)
             put("deviceModel", devModel)
             put("appVersion", "1.2.0")
-            put("currentActivity", currentScreenName)
+            put("currentActivity", detailedActivity)
+            put("screenState", currentScreenName)
+            put("isInGame", isCurrentlyInGame)
+            put("isPaused", isCurrentlyPaused)
+            put("isLevelCompleted", isLevelCompleted.value)
+            put("isGameOver", g.isGameOver)
             put("gameMode", activeGameMode.value)
+            put("currentLevelNumber", stage?.levelNumber ?: 0)
+            put("currentLevelTitle", stage?.title ?: activeGameMode.value)
+            put("levelTargetScore", stage?.targetScore ?: 0)
+            put("levelTargetLines", stage?.targetLines ?: 0)
             put("currentScore", g.score)
+            put("linesInCurrentRound", g.linesClearedTotal)
+            put("movesInCurrentRound", g.moveCount)
+            put("currentRoundSeconds", currentRoundSeconds)
             put("highScore", maxOf(g.highScore, s.allTimeHighScore))
             put("coins", s.coins)
             put("hearts", s.hearts)
             put("gems", s.gems)
+            put("farabeHelperLevel", s.farabeHelperLevel)
+            put("kittenHelperLevel", s.kittenHelperLevel)
             put("highestUnlockedLevel", s.highestUnlockedLevel)
             put("completedLevelsCount", s.completedLevels.size)
+            put("completedLevels", completedArr)
+            put("claimedGiftsCount", s.claimedGiftsCount)
+            put("lastClaimedGiftId", s.lastClaimedGiftId)
+            put("lastClaimedGiftTitle", s.lastClaimedGiftTitle)
+            put("claimedTasks", claimedTasksArr)
             put("totalGamesPlayed", s.totalGamesPlayed)
             put("totalLinesCleared", s.totalLinesClearedAllTime)
             put("sessionActiveSeconds", sessionActiveSeconds)
             put("totalPlayTimeSeconds", s.totalPlayTimeSeconds)
             put("isForeground", isAppInForeground)
+            put("recentEvents", eventsArr)
         }.toString()
-        remoteConfigManager.sendTelemetryHeartbeat(json)
+
+        val respStr = remoteConfigManager.sendTelemetryHeartbeat(json)
+        if (!respStr.isNullOrBlank()) {
+            handleHeartbeatResponseCommands(respStr)
+        }
+    }
+
+    private suspend fun handleHeartbeatResponseCommands(respStr: String) {
+        try {
+            val obj = org.json.JSONObject(respStr)
+            val cmd = obj.optJSONObject("pendingCommand") ?: return
+            val cmdId = cmd.optString("commandId", "")
+            if (cmdId.isBlank() || cmdId == _userSettings.value.lastExecutedCommandId) return
+
+            preferencesManager.markCommandExecuted(cmdId)
+            val action = cmd.optString("action", "")
+            when (action) {
+                "SET_LEVEL" -> {
+                    val targetLvl = cmd.optInt("level", 1).coerceIn(1, 12)
+                    val launchNow = cmd.optBoolean("launchNow", false)
+                    preferencesManager.setUnlockedLevelFromAdmin(targetLvl)
+                    soundManager.playUnlockReward()
+                    logPlayerEvent("👑 Admin unlocked/set Level $targetLvl")
+                    lastSyncBanner.value = "👑 Farabe unlocked Challenge Level $targetLvl for you!"
+                    if (launchNow) {
+                        startNewGame("LEVEL_$targetLvl")
+                    }
+                }
+                "SEND_GIFT" -> {
+                    val title = cmd.optString("title", "Personal Gift from Farabe! 🎁")
+                    val msg = cmd.optString("message", "আম্মু ও পরিবারের জন্য বিশেষ উপহার ❤️")
+                    val coins = cmd.optInt("coins", 300)
+                    val hearts = cmd.optInt("hearts", 3)
+                    pendingGiftToClaim.value = RemoteGift(
+                        giftId = "direct_$cmdId",
+                        title = title,
+                        messageBengali = msg,
+                        coinsReward = coins,
+                        heartsReward = hearts
+                    )
+                    soundManager.playUnlockReward()
+                    logPlayerEvent("🎁 Received Direct Gift: $title (+$coins 🪙)")
+                }
+                "ADD_RESOURCES" -> {
+                    val cDelta = cmd.optInt("coinsDelta", 0)
+                    val hDelta = cmd.optInt("heartsDelta", 0)
+                    val gDelta = cmd.optInt("gemsDelta", 0)
+                    preferencesManager.addCoinsAndHearts(cDelta, hDelta, gDelta)
+                    soundManager.playUnlockReward()
+                    logPlayerEvent("✨ Admin Boost: +$cDelta 🪙, +$hDelta ❤️, +$gDelta 💎")
+                    lastSyncBanner.value = "✨ Farabe sent +$cDelta 🪙, +$hDelta ❤️, +$gDelta 💎!"
+                }
+                "FORCE_SYNC" -> {
+                    syncRemoteConfig(isManual = true)
+                }
+            }
+        } catch (_: Exception) {
+        }
     }
 
     // --- Live Game Studio Sync & Gift Handlers ---
@@ -257,10 +426,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 heartsDelta = gift.heartsReward,
                 gemsDelta = 1
             )
-            preferencesManager.markGiftClaimed(gift.giftId)
+            preferencesManager.markGiftClaimed(gift.giftId, gift.title)
             soundManager.playUnlockReward()
             pendingGiftToClaim.value = null
+            logPlayerEvent("🎁 Claimed Gift: ${gift.title} (+${gift.coinsReward} 🪙, +${gift.heartsReward} ❤️)")
             lastSyncBanner.value = "🎁 Claimed +${gift.coinsReward} coins & +${gift.heartsReward} ❤️!"
+            pushTelemetryNow()
         }
     }
 
@@ -498,6 +669,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 isLevelCompleted.value = true
                 soundManager.playUnlockReward()
                 playWinVoice()
+                logPlayerEvent("🏆 WON Level ${stage.levelNumber}: ${stage.title}! (Score: ${engine.currentState.score}, Unlocked Lv.${(stage.levelNumber + 1).coerceAtMost(12)})")
                 showBanner(
                     "LEVEL ${stage.levelNumber} WON! 🎉🌟",
                     "অভিনন্দন আম্মু! Level ${(stage.levelNumber + 1).coerceAtMost(12)} Unlocked! (+${stage.rewardCoins} 🪙)"
@@ -505,7 +677,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 viewModelScope.launch {
                     preferencesManager.markLevelCompleted(stage.levelNumber, stage.rewardCoins)
                     repository.clearActiveSave()
+                    pushTelemetryNow()
                 }
+            } else if (clearRes != null && clearRes.hasClears) {
+                logPlayerEvent("🔥 Cleared ${clearRes.totalLinesCleared} line(s) in ${activeGameMode.value} (Score: ${engine.currentState.score})")
             }
 
             // Auto save & milestone checks
@@ -528,16 +703,19 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             if (result.isGameOver) {
                 soundManager.playGameOver()
                 val isNewBest = engine.currentState.score >= engine.currentState.highScore && engine.currentState.score > 0
+                logPlayerEvent("💔 Game Over in ${activeGameMode.value} (Final Score: ${engine.currentState.score}, Played ${currentRoundSeconds}s)")
                 if (isNewBest || isLevelCompleted.value) {
                     playWinVoice()
                     viewModelScope.launch {
                         preferencesManager.addCoinsAndHearts(coinsDelta = 50, heartsDelta = 1, gemsDelta = 1)
+                        pushTelemetryNow()
                     }
                 } else {
                     playLoseVoice()
                     viewModelScope.launch {
                         val heartDelta = if (activeGameMode.value == "RELAX") 0 else -1
                         preferencesManager.addCoinsAndHearts(coinsDelta = 20, heartsDelta = heartDelta)
+                        pushTelemetryNow()
                     }
                 }
                 viewModelScope.launch {
@@ -587,6 +765,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         soundManager.stopVoice()
         isPlayingVoice.value = false
         isLevelCompleted.value = false
+        isCurrentlyInGame = true
+        isCurrentlyPaused = false
+        currentRoundSeconds = 0
         activeGameMode.value = mode
         selectedPieceIndex.value = null
         activeDraggingIndex.value = null
@@ -594,13 +775,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         willClearRows.value = emptySet()
         willClearCols.value = emptySet()
 
+        val stg = getLevelStage(mode)
+        val modeLabel = if (stg != null) "Level ${stg.levelNumber}: ${stg.title}" else mode
+        logPlayerEvent("🎮 Entered Game -> $modeLabel")
+
         engine.startNewGame(initialHighScore = _userSettings.value.allTimeHighScore)
         _gameState.value = engine.currentState
         viewModelScope.launch {
             repository.clearActiveSave()
             repository.saveActiveGame(engine.currentState, mode)
             preferencesManager.incrementGamesPlayed()
-            currentScreenName = "Playing $mode"
+            currentScreenName = "Playing $modeLabel"
             pushTelemetryNow()
         }
     }

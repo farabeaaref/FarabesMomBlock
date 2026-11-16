@@ -213,15 +213,15 @@ class RemoteConfigManager(
 
     /**
      * Sends live player telemetry heartbeat to Farabe's Game Control Studio
-     * so Farabe can see who is playing, active duration, score, and level in real time.
+     * and returns any pending remote-control commands for this player!
      */
-    suspend fun sendTelemetryHeartbeat(payloadJson: String) = withContext(Dispatchers.IO) {
+    suspend fun sendTelemetryHeartbeat(payloadJson: String): String? = withContext(Dispatchers.IO) {
         try {
             val settings = preferencesManager.settingsFlow.first()
             val configUrl = settings.backendUrl.trim()
-            if (configUrl.isBlank()) return@withContext
+            if (configUrl.isBlank()) return@withContext null
             val baseOrigin = configUrl.substringBefore("/api/").trimEnd('/')
-            if (baseOrigin.isBlank()) return@withContext
+            if (baseOrigin.isBlank()) return@withContext null
 
             val heartbeatUrl = "$baseOrigin/api/telemetry/heartbeat"
             val conn = (URL(heartbeatUrl).openConnection() as HttpURLConnection).apply {
@@ -234,10 +234,14 @@ class RemoteConfigManager(
             conn.outputStream.use { out ->
                 out.write(payloadJson.toByteArray(Charsets.UTF_8))
             }
-            conn.responseCode
+            val code = conn.responseCode
+            val responseBody = if (code == HttpURLConnection.HTTP_OK) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else null
             conn.disconnect()
+            responseBody
         } catch (_: Exception) {
-            // Silently ignore when playing offline
+            null
         }
     }
 }

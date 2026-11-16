@@ -102,18 +102,14 @@ fun AppNavigation(viewModel: GameViewModel) {
             }
 
             composable("home") {
-                androidx.compose.runtime.LaunchedEffect(Unit) {
-                    viewModel.updateCurrentScreenActivity("Home Hub")
-                }
                 MainHubScreen(
                     viewModel = viewModel,
                     onPlayMode = { mode ->
                         viewModel.startNewGame(mode)
-                        viewModel.updateCurrentScreenActivity("Playing $mode")
                         navController.navigate("game")
                     },
                     onOpenLevels = {
-                        viewModel.updateCurrentScreenActivity("Challenge Roadmap")
+                        viewModel.updateCurrentScreenActivity("Challenge Roadmap (Levels)")
                         navController.navigate("levels")
                     },
                     onOpenFamilyMemory = {
@@ -131,11 +127,13 @@ fun AppNavigation(viewModel: GameViewModel) {
                 GameScreen(
                     viewModel = viewModel,
                     onHomeClick = {
+                        viewModel.onExitGameToHome()
                         navController.navigate("home") {
                             popUpTo("home") { inclusive = true }
                         }
                     },
                     onOpenGarden = {
+                        viewModel.updateCurrentScreenActivity("Mom's Garden")
                         navController.navigate("garden")
                     }
                 )
@@ -144,21 +142,30 @@ fun AppNavigation(viewModel: GameViewModel) {
             composable("garden") {
                 GardenScreen(
                     repository = viewModel.repository,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = {
+                        viewModel.updateCurrentScreenActivity("Home Hub (Home)")
+                        navController.popBackStack()
+                    }
                 )
             }
 
             composable("letters") {
                 SecretLettersScreen(
                     repository = viewModel.repository,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = {
+                        viewModel.updateCurrentScreenActivity("Home Hub (Helpers)")
+                        navController.popBackStack()
+                    }
                 )
             }
 
             composable("memory") {
                 FamilyMemoryScreen(
                     repository = viewModel.repository,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = {
+                        viewModel.updateCurrentScreenActivity("Home Hub (Album)")
+                        navController.popBackStack()
+                    }
                 )
             }
 
@@ -172,7 +179,10 @@ fun AppNavigation(viewModel: GameViewModel) {
                         viewModel.startNewGame("LEVEL_${level.levelNumber}")
                         navController.navigate("game")
                     },
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = {
+                        viewModel.updateCurrentScreenActivity("Home Hub (Home)")
+                        navController.popBackStack()
+                    }
                 )
             }
 

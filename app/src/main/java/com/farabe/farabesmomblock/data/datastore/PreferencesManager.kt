@@ -35,6 +35,9 @@ data class UserSettings(
     val kittenHelperLevel: Int = 1,
     val totalPlayTimeSeconds: Int = 0,
     val playerId: String = "",
+    val claimedGiftsCount: Int = 0,
+    val lastClaimedGiftTitle: String = "",
+    val lastExecutedCommandId: String = "",
     val lastSeenConfigVersion: Int = 1,
     val lastClaimedGiftId: String = "",
     val backendUrl: String = "http://10.0.2.2:8787/api/config",
@@ -75,6 +78,9 @@ class PreferencesManager(private val context: Context) {
         val KITTEN_HELPER_LVL = intPreferencesKey("kitten_helper_level")
         val TOTAL_PLAY_TIME_SEC = intPreferencesKey("total_play_time_sec")
         val PLAYER_ID = stringPreferencesKey("telemetry_player_id")
+        val CLAIMED_GIFTS_COUNT = intPreferencesKey("claimed_gifts_count")
+        val LAST_CLAIMED_GIFT_TITLE = stringPreferencesKey("last_claimed_gift_title")
+        val LAST_EXECUTED_CMD_ID = stringPreferencesKey("last_executed_cmd_id")
         val LAST_CONFIG_VERSION = intPreferencesKey("last_config_version")
         val LAST_CLAIMED_GIFT_ID = stringPreferencesKey("last_claimed_gift_id")
         val BACKEND_URL = stringPreferencesKey("backend_url")
@@ -103,6 +109,9 @@ class PreferencesManager(private val context: Context) {
             kittenHelperLevel = pref[Keys.KITTEN_HELPER_LVL] ?: 1,
             totalPlayTimeSeconds = pref[Keys.TOTAL_PLAY_TIME_SEC] ?: 0,
             playerId = pref[Keys.PLAYER_ID] ?: "",
+            claimedGiftsCount = pref[Keys.CLAIMED_GIFTS_COUNT] ?: 0,
+            lastClaimedGiftTitle = pref[Keys.LAST_CLAIMED_GIFT_TITLE] ?: "",
+            lastExecutedCommandId = pref[Keys.LAST_EXECUTED_CMD_ID] ?: "",
             lastSeenConfigVersion = pref[Keys.LAST_CONFIG_VERSION] ?: 1,
             lastClaimedGiftId = pref[Keys.LAST_CLAIMED_GIFT_ID] ?: "",
             backendUrl = pref[Keys.BACKEND_URL] ?: "http://10.0.2.2:8787/api/config",
@@ -237,8 +246,27 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[Keys.LAST_CONFIG_VERSION] = version }
     }
 
-    suspend fun markGiftClaimed(giftId: String) {
-        context.dataStore.edit { it[Keys.LAST_CLAIMED_GIFT_ID] = giftId }
+    suspend fun markGiftClaimed(giftId: String, giftTitle: String = "Surprise Gift") {
+        context.dataStore.edit { pref ->
+            pref[Keys.LAST_CLAIMED_GIFT_ID] = giftId
+            pref[Keys.LAST_CLAIMED_GIFT_TITLE] = giftTitle
+            pref[Keys.CLAIMED_GIFTS_COUNT] = (pref[Keys.CLAIMED_GIFTS_COUNT] ?: 0) + 1
+        }
+    }
+
+    suspend fun setUnlockedLevelFromAdmin(targetLevel: Int) {
+        context.dataStore.edit { pref ->
+            val cleanLvl = targetLevel.coerceIn(1, 12)
+            pref[Keys.HIGHEST_UNLOCKED_LEVEL] = cleanLvl
+            val completed = (1 until cleanLvl).toSet()
+            pref[Keys.COMPLETED_LEVELS_CSV] = completed.joinToString(",")
+        }
+    }
+
+    suspend fun markCommandExecuted(cmdId: String) {
+        context.dataStore.edit { pref ->
+            pref[Keys.LAST_EXECUTED_CMD_ID] = cmdId
+        }
     }
 
     suspend fun recordActivePlayTime(deltaSeconds: Int, fallbackPlayerId: String) {

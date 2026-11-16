@@ -225,8 +225,15 @@ fun MainHubScreen(
                         },
                         onRelaxQuickClick = { onPlayMode("RELAX") },
                         onLevelsClick = onOpenLevels,
-                        onMusicClick = { selectedTab = HubTab.GIFTS },
-                        onLettersClick = { selectedTab = HubTab.HELPERS },
+                        onMusicClick = {
+                            selectedTab = HubTab.GIFTS
+                            viewModel.updateCurrentScreenActivity("Home Hub (Gifts)")
+                        },
+                        onLettersClick = {
+                            selectedTab = HubTab.HELPERS
+                            viewModel.updateCurrentScreenActivity("Home Hub (Helpers)")
+                        },
+                        onPlayerProfileClick = { showStatusInfoModal = true },
                         onShowcasePoke = { viewModel.onShowcasePoked() }
                     )
 
@@ -295,7 +302,10 @@ fun MainHubScreen(
                 selectedTab = selectedTab,
                 hasUnreadGiftOrLetter = unreadLettersCount > 0 || hasUnclaimedGift,
                 theme = theme,
-                onTabSelected = { selectedTab = it }
+                onTabSelected = {
+                    selectedTab = it
+                    viewModel.updateCurrentScreenActivity("Home Hub (${it.label})")
+                }
             )
         }
     }
@@ -474,7 +484,42 @@ fun MainHubScreen(
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF4A2511)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "👨‍👩‍👧‍👦 Switch Active Family Player:",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF4A2511)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                listOf("Mom ❤️", "Baba 👑", "Sister 🌸", "Brother 🌟").forEach { preset ->
+                    val isCurrent = userSettings.momName.equals(preset, ignoreCase = true)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isCurrent) Color(0xFF43A047) else Color(0xFF7B1FA2))
+                            .clickable {
+                                viewModel.updateFamilyPlayerName(preset)
+                                showStatusInfoModal = false
+                            }
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = preset,
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
             Button(
                 onClick = {
                     viewModel.refillMomHeartsFree()
@@ -513,6 +558,7 @@ private fun HomeTabContent(
     onLevelsClick: () -> Unit,
     onMusicClick: () -> Unit,
     onLettersClick: () -> Unit,
+    onPlayerProfileClick: () -> Unit = {},
     onShowcasePoke: () -> Unit = {}
 ) {
     var cubeReactionText by remember { mutableStateOf<String?>(null) }
@@ -566,10 +612,15 @@ private fun HomeTabContent(
                     )
                 }
                 Text(
-                    text = "Welcome, $momName ❤️",
+                    text = "👤 $momName ▾",
                     color = theme.goldAccent,
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.White.copy(alpha = 0.14f))
+                        .clickable { onPlayerProfileClick() }
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
