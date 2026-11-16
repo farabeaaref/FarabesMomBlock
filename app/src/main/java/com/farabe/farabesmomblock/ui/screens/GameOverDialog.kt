@@ -48,6 +48,8 @@ fun GameOverDialog(
     hasVoiceMessage: Boolean = false,
     isPlayingVoice: Boolean = false,
     isLevelWin: Boolean = false,
+    currentLevelNumber: Int? = null,
+    onNextLevel: (() -> Unit)? = null,
     onReplayVoice: () -> Unit = {},
     onReplay: () -> Unit,
     onOpenGarden: () -> Unit,
@@ -68,16 +70,26 @@ fun GameOverDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (isNewBest) "🎉 NEW HIGH SCORE!" else "Great Game, Mom! ❤️",
-                    fontSize = 22.sp,
+                    text = when {
+                        isLevelWin && currentLevelNumber != null -> "🏆 LEVEL $currentLevelNumber COMPLETED!"
+                        isNewBest -> "🎉 NEW HIGH SCORE!"
+                        else -> "Great Game, Mom! ❤️ (+20 🪙)"
+                    },
+                    fontSize = 21.sp,
                     fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center,
                     color = if (isNewBest) GoldAccent else RoseAccent
                 )
 
                 Text(
-                    text = "You played with such elegance and thought.",
+                    text = if (isLevelWin) {
+                        "অভিনন্দন আম্মু! Next Challenge Stage is now UNLOCKED! 🌟"
+                    } else {
+                        "You played with such elegance and thought."
+                    },
                     fontSize = 13.sp,
-                    color = WarmCream.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center,
+                    color = WarmCream.copy(alpha = 0.85f),
                     modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
                 )
 
@@ -169,13 +181,31 @@ fun GameOverDialog(
                 }
 
                 // Action Buttons
+                if (isLevelWin && onNextLevel != null) {
+                    Button(
+                        onClick = onNextLevel,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                    ) {
+                        Text(
+                            text = "▶️ Play Next Challenge (Level ${((currentLevelNumber ?: 1) + 1).coerceAtMost(12)})",
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 Button(
                     onClick = onReplay,
                     colors = ButtonDefaults.buttonColors(containerColor = RoseAccent),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
+                        .height(48.dp)
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.size(8.dp))

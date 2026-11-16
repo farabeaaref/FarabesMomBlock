@@ -155,6 +155,10 @@ fun AppNavigation(viewModel: GameViewModel) {
 
             composable("levels") {
                 LevelModeScreen(
+                    highestUnlockedLevel = userSettings.highestUnlockedLevel,
+                    completedLevels = userSettings.completedLevels,
+                    hearts = userSettings.hearts,
+                    onRefillHearts = { viewModel.refillMomHeartsFree() },
                     onSelectLevel = { level ->
                         viewModel.startNewGame("LEVEL_${level.levelNumber}")
                         navController.navigate("game")

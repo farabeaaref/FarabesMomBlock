@@ -106,7 +106,7 @@ fun BoardView(
                     )
                 }
 
-                // 3. Glowing Neon Orange/Gold Landing Box (exact match to reference screenshot)
+                // 3. 3D Holographic Golden-Flame Landing Target (exact contour, no boxy clutter)
                 if (candidateAnchor != null && candidateShapePoints != null && ghostCells.isNotEmpty()) {
                     for (pt in candidateShapePoints) {
                         val cr = candidateAnchor.first + pt.y
@@ -115,20 +115,30 @@ fun BoardView(
                             val rx = cc * cellW
                             val ry = cr * cellH
 
-                            // Outer neon aura
+                            // Soft outer golden plasma bloom
                             drawRoundRect(
-                                color = NeonLandingGlow.copy(alpha = 0.45f * shimmerAlpha),
-                                topLeft = Offset(rx - 3f, ry - 3f),
-                                size = Size(cellW + 6f, cellH + 6f),
-                                cornerRadius = CornerRadius(12f, 12f)
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        GoldAccent.copy(alpha = 0.45f * shimmerAlpha),
+                                        NeonLandingGlow.copy(alpha = 0.20f * shimmerAlpha),
+                                        Color.Transparent
+                                    ),
+                                    center = Offset(rx + cellW * 0.5f, ry + cellH * 0.5f),
+                                    radius = cellW * 0.75f
+                                ),
+                                topLeft = Offset(rx - 4f, ry - 4f),
+                                size = Size(cellW + 8f, cellH + 8f),
+                                cornerRadius = CornerRadius(14f, 14f)
                             )
-                            // Bright sharp neon outline
+                            // Crisp illuminated crystal landing rim
                             drawRoundRect(
-                                color = NeonLandingOrange,
-                                topLeft = Offset(rx + 2f, ry + 2f),
-                                size = Size(cellW - 4f, cellH - 4f),
+                                brush = Brush.verticalGradient(
+                                    listOf(Color(0xFFFFF59D), GoldAccent, NeonLandingOrange)
+                                ),
+                                topLeft = Offset(rx + 2.5f, ry + 2.5f),
+                                size = Size(cellW - 5f, cellH - 5f),
                                 cornerRadius = CornerRadius(10f, 10f),
-                                style = Stroke(width = 3.5f)
+                                style = Stroke(width = 2.8f)
                             )
                         }
                     }

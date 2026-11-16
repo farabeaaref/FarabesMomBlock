@@ -21,18 +21,22 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.farabe.farabesmomblock.engine.BlockColor
 
-// Chocolate wooden gameboard slot colors matching reference
-val WoodBoardSlotBg = Color(0xFF1E1513)
-val WoodBoardSlotBorder = Color(0xFF33231F)
-val WoodBoardSlotShadow = Color(0xFF0F0A09)
+// Rich carved mahogany gameboard slot colors
+val WoodBoardSlotBg = Color(0xFF1C1311)
+val WoodBoardSlotBorder = Color(0xFF3A2823)
+val WoodBoardSlotShadow = Color(0xFF0C0706)
 
 /**
- * 3D Gummy / Enamel Dimensional Block Tile with specular pill highlights
- * and embossed nostalgic Bangladeshi motifs (matching reference game art).
+ * 3D Blender-Style Faceted Crystal & Enamel Block Tile!
+ * Renders 5 physically shaded 3D trapezoid bevel facets (Top Lit Bevel, Left Warm Bevel,
+ * Right & Bottom Deep Shadow Bevels, and Recessed Inner Jewel Crown with studio reflection)
+ * plus delicate embossed Bangladeshi cultural motifs.
  */
 @Composable
 fun BlockTile(
@@ -48,34 +52,39 @@ fun BlockTile(
 
     LaunchedEffect(hasFilledColor) {
         if (hasFilledColor && !isClearing) {
-            scaleAnim.snapTo(1.16f)
-            scaleAnim.animateTo(1f, animationSpec = tween(durationMillis = 190))
+            scaleAnim.snapTo(1.15f)
+            scaleAnim.animateTo(1f, animationSpec = tween(durationMillis = 180))
         }
     }
 
     LaunchedEffect(isClearing) {
         if (isClearing) {
-            scaleAnim.animateTo(0f, animationSpec = tween(durationMillis = 240))
+            scaleAnim.animateTo(0f, animationSpec = tween(durationMillis = 230))
         } else {
             scaleAnim.snapTo(1f)
         }
     }
 
     if (color == null) {
-        // Recessed wooden pocket matching reference image
+        // Recessed 3D carved wooden pocket
         Box(
             modifier = modifier
-                .padding(2.5.dp)
+                .padding(2.2.dp)
                 .clip(RoundedCornerShape(cornerRadius))
                 .background(WoodBoardSlotBg)
-                .border(0.8.dp, WoodBoardSlotBorder, RoundedCornerShape(cornerRadius))
+                .border(0.9.dp, WoodBoardSlotBorder, RoundedCornerShape(cornerRadius))
                 .drawBehind {
-                    // Inner top-left depression shadow
                     drawRoundRect(
-                        color = WoodBoardSlotShadow.copy(alpha = 0.6f),
+                        color = WoodBoardSlotShadow.copy(alpha = 0.72f),
                         topLeft = Offset(0f, 0f),
-                        size = Size(size.width, size.height * 0.35f),
-                        cornerRadius = CornerRadius(12f, 12f)
+                        size = Size(size.width, size.height * 0.36f),
+                        cornerRadius = CornerRadius(10f, 10f)
+                    )
+                    drawRoundRect(
+                        color = Color.White.copy(alpha = 0.04f),
+                        topLeft = Offset(size.width * 0.08f, size.height * 0.78f),
+                        size = Size(size.width * 0.84f, size.height * 0.16f),
+                        cornerRadius = CornerRadius(8f, 8f)
                     )
                 }
         )
@@ -85,63 +94,178 @@ fun BlockTile(
         val shadowColor = Color(color.shadowHex)
         val motifColor = Color(color.motifAccentHex)
 
-        val alpha = if (isGhost) 0.45f else 1.0f
-
-        Box(
-            modifier = modifier
-                .scale(scaleAnim.value)
-                .padding(2.dp)
-                .clip(RoundedCornerShape(cornerRadius))
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            highlightColor.copy(alpha = alpha),
-                            baseColor.copy(alpha = alpha),
-                            shadowColor.copy(alpha = alpha)
+        if (isGhost) {
+            // Sleek Holographic Translucent Crystal Footprint (never clutters dragged piece)
+            Box(
+                modifier = modifier
+                    .padding(2.2.dp)
+                    .clip(RoundedCornerShape(cornerRadius))
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                highlightColor.copy(alpha = 0.38f),
+                                baseColor.copy(alpha = 0.22f)
+                            )
                         )
                     )
-                )
-                .border(
-                    width = 1.dp,
-                    color = if (isGhost) Color.White.copy(alpha = 0.85f) else highlightColor.copy(alpha = 0.8f),
-                    shape = RoundedCornerShape(cornerRadius)
-                )
-                .drawBehind {
-                    if (!isGhost) {
-                        // 1. Curved pill specular reflection on top (matching reference screenshot)
+                    .border(
+                        width = 1.6.dp,
+                        brush = Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.9f), highlightColor.copy(alpha = 0.75f))
+                        ),
+                        shape = RoundedCornerShape(cornerRadius)
+                    )
+            )
+        } else {
+            Box(
+                modifier = modifier
+                    .scale(scaleAnim.value)
+                    .padding(1.6.dp)
+                    .clip(RoundedCornerShape(cornerRadius))
+                    .drawBehind {
+                        val w = size.width
+                        val h = size.height
+                        val bev = (size.minDimension * 0.17f).coerceAtLeast(3.5f)
+                        val rPx = cornerRadius.toPx()
+
+                        // 0. Base jewel body
                         drawRoundRect(
-                            color = Color.White.copy(alpha = 0.65f),
-                            topLeft = Offset(size.width * 0.14f, size.height * 0.10f),
-                            size = Size(size.width * 0.72f, size.height * 0.28f),
-                            cornerRadius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx())
+                            brush = Brush.linearGradient(
+                                colors = listOf(highlightColor, baseColor, shadowColor),
+                                start = Offset(0f, 0f),
+                                end = Offset(w, h)
+                            ),
+                            cornerRadius = CornerRadius(rPx, rPx)
                         )
-                        // 2. Extra bright specular glint dot
+
+                        // 1. Top 3D Chamfer Bevel (Bright Studio Key Light)
+                        val topFacet = Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(w, 0f)
+                            lineTo(w - bev, bev)
+                            lineTo(bev, bev)
+                            close()
+                        }
+                        drawPath(
+                            path = topFacet,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.72f),
+                                    highlightColor.copy(alpha = 0.85f)
+                                ),
+                                startY = 0f,
+                                endY = bev
+                            )
+                        )
+
+                        // 2. Left 3D Chamfer Bevel (Warm Fill Light)
+                        val leftFacet = Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(bev, bev)
+                            lineTo(bev, h - bev)
+                            lineTo(0f, h)
+                            close()
+                        }
+                        drawPath(
+                            path = leftFacet,
+                            color = highlightColor.copy(alpha = 0.55f)
+                        )
+
+                        // 3. Right 3D Chamfer Bevel (Mid-Shadow)
+                        val rightFacet = Path().apply {
+                            moveTo(w, 0f)
+                            lineTo(w, h)
+                            lineTo(w - bev, h - bev)
+                            lineTo(w - bev, bev)
+                            close()
+                        }
+                        drawPath(
+                            path = rightFacet,
+                            color = shadowColor.copy(alpha = 0.70f)
+                        )
+
+                        // 4. Bottom 3D Chamfer Bevel (Deep Ambient Occlusion Shadow)
+                        val bottomFacet = Path().apply {
+                            moveTo(0f, h)
+                            lineTo(bev, h - bev)
+                            lineTo(w - bev, h - bev)
+                            lineTo(w, h)
+                            close()
+                        }
+                        drawPath(
+                            path = bottomFacet,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    shadowColor.copy(alpha = 0.85f),
+                                    Color.Black.copy(alpha = 0.55f)
+                                ),
+                                startY = h - bev,
+                                endY = h
+                            )
+                        )
+
+                        // 5. Inner Crown Plateau (Glossy Enamel / Gem Core)
+                        val innerW = (w - bev * 2f).coerceAtLeast(2f)
+                        val innerH = (h - bev * 2f).coerceAtLeast(2f)
+                        val innerR = (rPx * 0.65f).coerceAtLeast(2f)
+                        drawRoundRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    highlightColor,
+                                    baseColor,
+                                    shadowColor.copy(alpha = 0.92f)
+                                ),
+                                startY = bev,
+                                endY = h - bev
+                            ),
+                            topLeft = Offset(bev, bev),
+                            size = Size(innerW, innerH),
+                            cornerRadius = CornerRadius(innerR, innerR)
+                        )
+
+                        // 6. Crisp Inner Bevel Rim Line
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.42f),
+                            topLeft = Offset(bev, bev),
+                            size = Size(innerW, innerH),
+                            cornerRadius = CornerRadius(innerR, innerR),
+                            style = Stroke(width = 1.1f)
+                        )
+
+                        // 7. Curved Studio Glass Specular Reflection on Crown
+                        drawRoundRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.68f),
+                                    Color.White.copy(alpha = 0.08f)
+                                ),
+                                startY = bev + 1f,
+                                endY = bev + innerH * 0.45f
+                            ),
+                            topLeft = Offset(bev + innerW * 0.08f, bev + innerH * 0.06f),
+                            size = Size(innerW * 0.84f, innerH * 0.36f),
+                            cornerRadius = CornerRadius(innerR, innerR)
+                        )
+
+                        // 8. Corner Diamond Sparkle Glint
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.85f),
-                            radius = size.minDimension * 0.08f,
-                            center = Offset(size.width * 0.25f, size.height * 0.22f)
+                            color = Color.White.copy(alpha = 0.92f),
+                            radius = size.minDimension * 0.065f,
+                            center = Offset(bev + innerW * 0.18f, bev + innerH * 0.20f)
                         )
-                        // 3. Bottom rounded depth shadow bevel
-                        drawRoundRect(
-                            color = Color.Black.copy(alpha = 0.35f),
-                            topLeft = Offset(size.width * 0.10f, size.height * 0.72f),
-                            size = Size(size.width * 0.80f, size.height * 0.20f),
-                            cornerRadius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx())
-                        )
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            // Delicate embossed nostalgic Bangladeshi heritage motif
-            if (showMotif) {
-                BangladeshiMotifCanvas(
-                    motif = color.motif,
-                    accentColor = if (isGhost) Color.White else motifColor,
-                    alpha = if (isGhost) 0.65f else 0.85f,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(5.dp)
-                )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (showMotif) {
+                    BangladeshiMotifCanvas(
+                        motif = color.motif,
+                        accentColor = motifColor,
+                        alpha = 0.90f,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(5.5.dp)
+                    )
+                }
             }
         }
     }

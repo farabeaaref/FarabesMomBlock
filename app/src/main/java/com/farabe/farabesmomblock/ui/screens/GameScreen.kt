@@ -51,6 +51,7 @@ import com.farabe.farabesmomblock.ui.components.DragAuraBeam
 import com.farabe.farabesmomblock.ui.components.DynamicGameBackground
 import com.farabe.farabesmomblock.ui.components.FairyLights
 import com.farabe.farabesmomblock.ui.components.ParticleOverlay
+import com.farabe.farabesmomblock.ui.components.PieceEdgeFlameEffect
 import com.farabe.farabesmomblock.ui.components.PieceShapePreview
 import com.farabe.farabesmomblock.ui.components.PieceTrayView
 import com.farabe.farabesmomblock.ui.components.PowerUpBar
@@ -184,29 +185,35 @@ fun GameScreen(
                     onShuffleClick = { viewModel.shuffleTray() }
                 )
 
-                val levelTarget = viewModel.getLevelTargetScore(activeGameMode)
-                if (levelTarget != null) {
-                    val lvlProgress = (gameState.score.toFloat() / levelTarget.toFloat()).coerceIn(0f, 1f)
+                val levelStage = viewModel.getLevelStage(activeGameMode)
+                if (levelStage != null) {
+                    val scoreRatio = (gameState.score.toFloat() / levelStage.targetScore.toFloat()).coerceIn(0f, 1f)
+                    val lineRatio = (gameState.linesClearedTotal.toFloat() / levelStage.targetLines.toFloat()).coerceIn(0f, 1f)
+                    val lvlProgress = maxOf(scoreRatio, lineRatio)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(remoteTheme.surfaceColor.copy(alpha = 0.88f))
-                            .border(1.dp, remoteTheme.goldAccent.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                            .background(remoteTheme.surfaceColor.copy(alpha = 0.90f))
+                            .border(1.dp, remoteTheme.goldAccent.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = if (isLevelCompleted) "🌟 ${activeGameMode.replace('_', ' ')} CLEAR!" else "⭐ ${activeGameMode.replace('_', ' ')} Goal: ${gameState.score}/$levelTarget",
+                            text = if (isLevelCompleted) {
+                                "🌟 Lv.${levelStage.levelNumber} ${levelStage.title} COMPLETED!"
+                            } else {
+                                "${levelStage.rewardEmoji} Lv.${levelStage.levelNumber}: ${gameState.score}/${levelStage.targetScore} pts • ${gameState.linesClearedTotal}/${levelStage.targetLines} lines"
+                            },
                             color = if (isLevelCompleted) remoteTheme.accentColor else GoldAccent,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black
                         )
                         Box(
                             modifier = Modifier
-                                .width(84.dp)
+                                .width(76.dp)
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(Color(0xFF170B2A))
@@ -370,17 +377,13 @@ fun GameScreen(
                                 )
                             }
                     ) {
-                        // 1. Rising Fire/Light Beam above the piece (exact match to reference screenshot)
-                        Box(
-                            modifier = Modifier
-                                .width(with(density) { shapeWidthPx.toDp() })
-                                .height(90.dp)
-                                .offset(y = (-80).dp)
-                        ) {
-                            DragAuraBeam(beamColor = Color(draggingShape.color.primaryHex))
-                        }
+                        // 1. Contour-hugging 3D Edge Flame & Ember Sparks around exact tiles (no boxy rectangle!)
+                        PieceEdgeFlameEffect(
+                            shape = draggingShape,
+                            cellSize = boardCellDp
+                        )
 
-                        // 2. The 3D Gummy Piece
+                        // 2. The 3D Beveled Jewel Piece
                         PieceShapePreview(
                             shape = draggingShape,
                             cellSize = boardCellDp,
@@ -411,15 +414,20 @@ fun GameScreen(
                 )
             }
 
-            // Game Over Dialog
-            if (gameState.isGameOver) {
+            // Game Over or Challenge Stage Victory Dialog
+            if (gameState.isGameOver || isLevelCompleted) {
                 val isWinEnd = (gameState.score >= gameState.highScore && gameState.score > 0) || isLevelCompleted
+                val currentStage = viewModel.getLevelStage(activeGameMode)
                 GameOverDialog(
                     score = gameState.score,
                     highScore = gameState.highScore,
                     hasVoiceMessage = viewModel.hasEndGameVoice(isWinEnd),
                     isPlayingVoice = isPlayingVoice,
                     isLevelWin = isLevelCompleted,
+                    currentLevelNumber = currentStage?.levelNumber,
+                    onNextLevel = if (isLevelCompleted) {
+                        { viewModel.startNextChallengeLevel() }
+                    } else null,
                     onReplayVoice = { viewModel.replayEndGameVoice(isWinEnd) },
                     onReplay = {
                         viewModel.startNewGame(activeGameMode)

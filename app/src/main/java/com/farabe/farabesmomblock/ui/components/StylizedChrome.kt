@@ -46,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +54,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -65,6 +68,7 @@ import androidx.compose.ui.window.Dialog
 import com.farabe.farabesmomblock.R
 import com.farabe.farabesmomblock.remote.RemoteTheme
 import com.farabe.farabesmomblock.ui.theme.WarmCream
+import kotlin.math.cos
 import kotlin.math.sin
 
 enum class HubTab(val label: String, val icon: ImageVector) {
@@ -127,18 +131,58 @@ fun DynamicGameBackground(
         )
 
         if (ambientEffect != "NONE") {
+            val (adaptive1, adaptive2) = remember(customBitmap, primaryTint) {
+                sampleAdaptivePaletteFromBitmap(customBitmap, primaryTint)
+            }
             AmbientFirefliesOverlay(
                 usePetals = ambientEffect == "FIREFLIES_AND_PETALS" || ambientEffect == "ROSE_PETALS",
-                useSparkles = ambientEffect != "ROSE_PETALS"
+                useSparkles = ambientEffect != "ROSE_PETALS",
+                primaryAdaptiveColor = adaptive1,
+                secondaryAdaptiveColor = adaptive2
             )
         }
+    }
+}
+
+private fun sampleAdaptivePaletteFromBitmap(bmp: Bitmap?, fallbackTint: Color): Pair<Color, Color> {
+    if (bmp == null || bmp.width < 4 || bmp.height < 4) {
+        return Pair(Color(0xFFFFD54F), Color(0xFFFF80AB))
+    }
+    return try {
+        var rSum = 0L
+        var gSum = 0L
+        var bSum = 0L
+        var count = 0
+        val stepX = (bmp.width / 6).coerceAtLeast(1)
+        val stepY = (bmp.height / 6).coerceAtLeast(1)
+        for (x in stepX until bmp.width step stepX) {
+            for (y in stepY until bmp.height step stepY) {
+                val px = bmp.getPixel(x, y)
+                rSum += (px shr 16) and 0xFF
+                gSum += (px shr 8) and 0xFF
+                bSum += px and 0xFF
+                count++
+            }
+        }
+        if (count == 0) return Pair(Color(0xFFFFD54F), Color(0xFFFF80AB))
+        val r = ((rSum / count) / 255f * 0.65f + 0.35f).coerceIn(0.25f, 1f)
+        val g = ((gSum / count) / 255f * 0.65f + 0.28f).coerceIn(0.20f, 1f)
+        val b = ((bSum / count) / 255f * 0.65f + 0.35f).coerceIn(0.25f, 1f)
+        Pair(
+            Color(r, g, b, 1f),
+            Color((r * 0.6f + 0.4f).coerceIn(0f, 1f), (g * 0.7f + 0.25f).coerceIn(0f, 1f), (b * 0.5f + 0.45f).coerceIn(0f, 1f), 1f)
+        )
+    } catch (_: Throwable) {
+        Pair(fallbackTint, Color(0xFFFFD54F))
     }
 }
 
 @Composable
 fun AmbientFirefliesOverlay(
     usePetals: Boolean = true,
-    useSparkles: Boolean = true
+    useSparkles: Boolean = true,
+    primaryAdaptiveColor: Color = Color(0xFFFFE082),
+    secondaryAdaptiveColor: Color = Color(0xFFFF80AB)
 ) {
     val inf = rememberInfiniteTransition(label = "fireflies")
     val phase by inf.animateFloat(
@@ -151,6 +195,78 @@ fun AmbientFirefliesOverlay(
     Canvas(modifier = Modifier.fillMaxSize()) {
         val w = size.width
         val h = size.height
+        val cx = w * 0.5f
+        val cy = h * 0.44f
+        val baseRadius = size.minDimension * 0.42f
+
+        // 1. Procedural Sacred Alpona / Fractal Spirograph Lotus Geometry
+        val petals = 12
+        val fractalPath = Path()
+        val steps = 120
+        for (s in 0..steps) {
+            val t = (s.toFloat() / steps) * 6.283185f
+            val rMod = 0.72f + 0.28f * cos(petals * t + phase * 2f) + 0.10f * sin((petals * 2) * t - phase)
+            val rad = baseRadius * rMod
+            val px = cx + rad * cos(t + phase * 0.35f)
+            val py = cy + rad * sin(t + phase * 0.35f)
+            if (s == 0) fractalPath.moveTo(px, py) else fractalPath.lineTo(px, py)
+        }
+        fractalPath.close()
+        drawPath(
+            path = fractalPath,
+            brush = Brush.sweepGradient(
+                colors = listOf(
+                    primaryAdaptiveColor.copy(alpha = 0.24f),
+                    secondaryAdaptiveColor.copy(alpha = 0.28f),
+                    Color(0xFFFFD54F).copy(alpha = 0.22f),
+                    primaryAdaptiveColor.copy(alpha = 0.24f)
+                ),
+                center = Offset(cx, cy)
+            ),
+            style = Stroke(width = 2.2f)
+        )
+
+        // Inner counter-rotating fractal harmonic ring
+        val innerPath = Path()
+        for (s in 0..steps) {
+            val t = (s.toFloat() / steps) * 6.283185f
+            val rMod = 0.48f + 0.18f * sin(8 * t - phase * 2f)
+            val rad = baseRadius * rMod
+            val px = cx + rad * cos(t - phase * 0.5f)
+            val py = cy + rad * sin(t - phase * 0.5f)
+            if (s == 0) innerPath.moveTo(px, py) else innerPath.lineTo(px, py)
+        }
+        innerPath.close()
+        drawPath(
+            path = innerPath,
+            color = primaryAdaptiveColor.copy(alpha = 0.18f),
+            style = Stroke(width = 1.6f)
+        )
+
+        // 2. Soft Prismatic Aurora Light Wave
+        val auroraPath = Path().apply {
+            moveTo(0f, h * 0.18f)
+            quadraticBezierTo(
+                w * 0.35f,
+                h * (0.12f + 0.05f * sin(phase)),
+                w * 0.70f,
+                h * (0.20f + 0.04f * cos(phase))
+            )
+            quadraticBezierTo(w * 0.88f, h * 0.24f, w, h * 0.16f)
+        }
+        drawPath(
+            path = auroraPath,
+            brush = Brush.horizontalGradient(
+                listOf(
+                    Color.Transparent,
+                    primaryAdaptiveColor.copy(alpha = 0.22f),
+                    secondaryAdaptiveColor.copy(alpha = 0.26f),
+                    Color.Transparent
+                )
+            ),
+            style = Stroke(width = 26f)
+        )
+
         if (useSparkles) {
             for (i in 0 until 16) {
                 val fx = ((i * 193 + sin(phase + i) * 35f) % w + w) % w

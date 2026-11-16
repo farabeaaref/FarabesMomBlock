@@ -113,7 +113,7 @@ fun MainHubScreen(
     val familyMemory by viewModel.repository.familyMemory.collectAsState(initial = null)
 
     var selectedTab by remember { mutableStateOf(HubTab.HOME) }
-    var selectedPlayMode by remember { mutableStateOf("CLASSIC") }
+    var selectedPlayMode by remember { mutableStateOf("LEVELS") }
     var inspectedGardenItem by remember { mutableStateOf<GardenItemEntity?>(null) }
     var inspectedLetter by remember { mutableStateOf<Pair<String, String>?>(null) }
     var showDailyModal by remember { mutableStateOf(false) }
@@ -199,6 +199,8 @@ fun MainHubScreen(
                     HubTab.HOME -> HomeTabContent(
                         momName = userSettings.momName,
                         highScore = highScore,
+                        highestUnlockedLevel = userSettings.highestUnlockedLevel,
+                        completedLevelsCount = userSettings.completedLevels.size,
                         activeMode = selectedPlayMode,
                         theme = theme,
                         hasUnclaimedGift = hasUnclaimedGift,
@@ -207,7 +209,8 @@ fun MainHubScreen(
                         onModeSelected = { selectedPlayMode = it },
                         onPlayClick = {
                             if (selectedPlayMode == "LEVELS") {
-                                onOpenLevels()
+                                val nextStage = userSettings.highestUnlockedLevel.coerceIn(1, 12)
+                                onPlayMode("LEVEL_$nextStage")
                             } else {
                                 onPlayMode(selectedPlayMode)
                             }
@@ -245,6 +248,7 @@ fun MainHubScreen(
 
                     HubTab.HELPERS -> HelpersTabContent(
                         viewModel = viewModel,
+                        userSettings = userSettings,
                         mediaRevision = mediaRevision,
                         remoteConfig = remoteConfig,
                         secretLetters = secretLetters,
@@ -259,14 +263,14 @@ fun MainHubScreen(
                             }
                         },
                         onClaimTask = { task ->
-                            coroutineScope.launch {
-                                viewModel.repository.preferencesManager.addCoinsAndHearts(
-                                    coinsDelta = task.rewardCoins,
-                                    gemsDelta = task.rewardGems
-                                )
-                                viewModel.soundManager.playUnlockReward()
-                                viewModel.lastSyncBanner.value = "✨ Claimed +${task.rewardCoins} coins from ${task.helperName}!"
-                            }
+                            viewModel.claimTask(task)
+                        },
+                        onUpgradeHelper = { isFarabe ->
+                            viewModel.upgradeHelper(isFarabe)
+                        },
+                        onPlayForTask = {
+                            val nextStage = userSettings.highestUnlockedLevel.coerceIn(1, 12)
+                            onPlayMode("LEVEL_$nextStage")
                         }
                     )
 
@@ -454,21 +458,38 @@ fun MainHubScreen(
 
     if (showStatusInfoModal) {
         CreamGoldModalDialog(
-            ribbonTitle = "Mom's Wallet ❤️",
-            speechBubbleText = "লাইন ক্লিয়ার করলে আর উপহার খুললেই কয়েন বাড়বে!",
+            ribbonTitle = "Mom's Royal Wallet ❤️",
+            speechBubbleText = "লাইন ক্লিয়ার করলে আর চ্যালেঞ্জ জিতলেই কয়েন ও হার্ট বাড়বে!",
             onDismiss = { showStatusInfoModal = false }
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 RewardBadgePill("❤️ ${userSettings.hearts} Hearts", Color(0xFFFFCDD2), Color(0xFF880E4F))
                 RewardBadgePill("🪙 ${userSettings.coins} Coins", Color(0xFFFFE082), Color(0xFF5D3A00))
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "All-time High Score: $highScore • Gems: ${userSettings.gems} 💎",
+                text = "Challenge Stage: Lv.${userSettings.highestUnlockedLevel}/12 • Gems: ${userSettings.gems} 💎",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF4A2511)
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    viewModel.refillMomHeartsFree()
+                    showStatusInfoModal = false
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD81B60)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "❤️ Free Refill +5 Hearts (From Farabe)",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 12.sp
+                )
+            }
         }
     }
 }
@@ -477,6 +498,8 @@ fun MainHubScreen(
 private fun HomeTabContent(
     momName: String,
     highScore: Int,
+    highestUnlockedLevel: Int = 1,
+    completedLevelsCount: Int = 0,
     activeMode: String,
     theme: RemoteTheme,
     hasUnclaimedGift: Boolean,
@@ -699,7 +722,7 @@ private fun HomeTabContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 8.dp)
             ) {
-                listOf("CLASSIC" to "Classic", "RELAX" to "Relax 🌸", "LEVELS" to "Levels ⭐").forEach { (key, title) ->
+                listOf("LEVELS" to "Challenge ⭐", "CLASSIC" to "Classic ♾️", "RELAX" to "Relax 🌸").forEach { (key, title) ->
                     val selected = activeMode == key
                     Box(
                         modifier = Modifier
@@ -725,16 +748,17 @@ private fun HomeTabContent(
                 }
             }
 
+            val currentStage = HANDCRAFTED_LEVELS.firstOrNull { it.levelNumber == highestUnlockedLevel.coerceIn(1, 12) }
             GlossyPlayButton(
-                title = "PLAY",
+                title = if (activeMode == "LEVELS") "PLAY LEVEL ${highestUnlockedLevel.coerceIn(1, 12)}" else "PLAY",
                 subtitle = when (activeMode) {
                     "RELAX" -> "PEACEFUL MODE • চলো খেলি"
-                    "LEVELS" -> "ADVENTURE STAGES"
+                    "LEVELS" -> "${currentStage?.rewardEmoji ?: "⭐"} ${currentStage?.title ?: "Challenge"} ($completedLevelsCount/12 Won)"
                     else -> "HIGH SCORE: $highScore"
                 },
                 accentColor = theme.accentColor,
                 onClick = onPlayClick,
-                modifier = Modifier.fillMaxWidth(0.76f)
+                modifier = Modifier.fillMaxWidth(0.80f)
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -1068,13 +1092,16 @@ private fun SketchbookTabContent(
 @Composable
 private fun HelpersTabContent(
     viewModel: GameViewModel,
+    userSettings: com.farabe.farabesmomblock.data.datastore.UserSettings,
     mediaRevision: Int,
     remoteConfig: RemoteGameConfig,
     secretLetters: List<SecretLetterEntity>,
     coins: Int,
     gems: Int,
     onOpenLetter: (letterId: String, title: String, content: String) -> Unit,
-    onClaimTask: (RemoteTask) -> Unit
+    onClaimTask: (RemoteTask) -> Unit,
+    onUpgradeHelper: (isFarabe: Boolean) -> Unit = {},
+    onPlayForTask: () -> Unit = {}
 ) {
     val theme = remoteConfig.theme
     var subTab by remember { mutableIntStateOf(0) } // 0 = Family, 1 = Tasks
@@ -1083,12 +1110,31 @@ private fun HelpersTabContent(
         viewModel.remoteConfigManager.loadCachedBitmap(viewModel.remoteConfigManager.cachedHelperAvatarFile)
     }
 
-    val tasksToShow = remember(remoteConfig.customTasks) {
-        if (remoteConfig.customTasks.isNotEmpty()) remoteConfig.customTasks
-        else listOf(
-            RemoteTask("t1", "Farabe", "Clear 5 lines today for Mom ❤️", 5, 100, 1),
-            RemoteTask("t2", "Misti Kitten", "Play a relaxing round 🌸", 1, 75, 1)
+    val builtInTasks = remember {
+        listOf(
+            RemoteTask("quest_lines_5", "Farabe ❤️", "Clear 5 lines across your games 🌸", 5, 100, 1),
+            RemoteTask("quest_games_2", "Misti Kitten 🐾", "Play 2 puzzle rounds for Mom 🎮", 2, 120, 1),
+            RemoteTask("quest_score_500", "Farabe ❤️", "Reach 500+ High Score 🏆", 500, 150, 1),
+            RemoteTask("quest_combos_2", "Misti Kitten 🐾", "Achieve 2 Combo Streaks 🔥", 2, 160, 1),
+            RemoteTask("quest_level_2", "Farabe ❤️", "Unlock Challenge Stage 2 ⭐", 2, 200, 2),
+            RemoteTask("quest_lines_20", "Misti Kitten 🐾", "Clear 20 total lines in Mom's Garden 🌺", 20, 300, 2)
         )
+    }
+
+    val tasksToShow = remember(remoteConfig.customTasks) {
+        val customIds = remoteConfig.customTasks.map { it.id }.toSet()
+        remoteConfig.customTasks + builtInTasks.filter { it.id !in customIds }
+    }
+
+    fun computeTaskCurrentValue(task: RemoteTask): Int {
+        return when (task.id) {
+            "quest_lines_5", "quest_lines_20" -> userSettings.totalLinesClearedAllTime
+            "quest_games_2", "task_daily_love" -> userSettings.totalGamesPlayed
+            "quest_score_500" -> userSettings.allTimeHighScore
+            "quest_combos_2" -> userSettings.totalCombosAllTime
+            "quest_level_2" -> userSettings.highestUnlockedLevel
+            else -> userSettings.totalGamesPlayed.coerceAtLeast(1)
+        }
     }
 
     Column(
@@ -1143,23 +1189,25 @@ private fun HelpersTabContent(
         if (subTab == 0) {
             // Farabe Helper Cream Card
             HelperCreamCard(
-                name = "Farabe ❤️",
-                description = "Sends new songs, letters, and doubles your daily coin gifts.",
-                badgeText = "🪙 $coins",
-                progressText = "💎 $gems/5",
+                name = "Farabe ❤️ (Lv.${userSettings.farabeHelperLevel})",
+                description = "Gives +${userSettings.farabeHelperLevel * 3} bonus coins per line clear & sends live voice/songs!",
+                badgeText = "🪙 +${userSettings.farabeHelperLevel * 3}/line",
+                progressText = "💎 $gems Gems",
                 avatarRes = R.drawable.portrait_farabe,
                 customAvatarBitmap = cachedHelperBitmap,
-                borderColor = AmberRibbonTop
+                borderColor = AmberRibbonTop,
+                onUpgradeClick = { onUpgradeHelper(true) }
             )
             Spacer(modifier = Modifier.height(10.dp))
             HelperCreamCard(
-                name = "Misti Kitten 🐾",
-                description = "Cheers Mom on every combo streak in Classic & Relax mode!",
-                badgeText = "ACTIVE",
-                progressText = "⭐ Lv.2",
+                name = "Misti Kitten 🐾 (Lv.${userSettings.kittenHelperLevel})",
+                description = "Gives +${userSettings.kittenHelperLevel * 3} bonus coins per line clear & cheers Mom on combos!",
+                badgeText = "🪙 +${userSettings.kittenHelperLevel * 3}/line",
+                progressText = "⭐ Lv.${userSettings.kittenHelperLevel}",
                 avatarRes = R.drawable.portrait_kitten,
                 customAvatarBitmap = null,
-                borderColor = AmberRibbonTop
+                borderColor = AmberRibbonTop,
+                onUpgradeClick = { onUpgradeHelper(false) }
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -1202,15 +1250,25 @@ private fun HelpersTabContent(
                 Spacer(modifier = Modifier.height(6.dp))
             }
         } else {
-            // Tasks Sub-Tab (matching Reference #7 with purple CLAIM buttons)
+            // Tasks Sub-Tab with real live progress & one-time claim protection
             tasksToShow.forEach { task ->
+                val curVal = computeTaskCurrentValue(task)
+                val targetVal = task.target.coerceAtLeast(1)
+                val ratio = (curVal.toFloat() / targetVal.toFloat()).coerceIn(0f, 1f)
+                val isCompleted = curVal >= targetVal
+                val isAlreadyClaimed = userSettings.claimedTaskIds.contains(task.id)
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 5.dp)
                         .clip(RoundedCornerShape(20.dp))
                         .background(CreamCardBg)
-                        .border(3.dp, AmberRibbonTop, RoundedCornerShape(20.dp))
+                        .border(
+                            width = 3.dp,
+                            color = if (isCompleted && !isAlreadyClaimed) Color(0xFF43A047) else AmberRibbonTop,
+                            shape = RoundedCornerShape(20.dp)
+                        )
                         .padding(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1227,12 +1285,24 @@ private fun HelpersTabContent(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = task.helperName,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color(0xFF4A2511)
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = task.helperName,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF4A2511)
+                                )
+                                Text(
+                                    text = "${curVal.coerceAtMost(targetVal)} / $targetVal",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (isCompleted) Color(0xFF2E7D32) else Color(0xFF7B1FA2)
+                                )
+                            }
                             Text(
                                 text = task.title,
                                 fontSize = 12.sp,
@@ -1240,24 +1310,41 @@ private fun HelpersTabContent(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             LinearProgressIndicator(
-                                progress = { 1f },
+                                progress = { ratio },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(7.dp)
                                     .clip(RoundedCornerShape(4.dp)),
-                                color = Color(0xFF8E24AA),
+                                color = if (isCompleted) Color(0xFF43A047) else Color(0xFF8E24AA),
                                 trackColor = Color(0xFFE0C8A8)
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Button(
-                                onClick = { onClaimTask(task) },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E24AA)),
+                                onClick = {
+                                    when {
+                                        isAlreadyClaimed -> {}
+                                        isCompleted -> onClaimTask(task)
+                                        else -> onPlayForTask()
+                                    }
+                                },
+                                enabled = !isAlreadyClaimed,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = when {
+                                        isAlreadyClaimed -> Color(0xFF9E9E9E)
+                                        isCompleted -> Color(0xFF43A047)
+                                        else -> Color(0xFF8E24AA)
+                                    }
+                                ),
                                 shape = RoundedCornerShape(12.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
                                 modifier = Modifier.height(30.dp)
                             ) {
                                 Text(
-                                    text = "CLAIM +${task.rewardCoins} 🪙",
+                                    text = when {
+                                        isAlreadyClaimed -> "✓ Claimed ❤️"
+                                        isCompleted -> "🎁 CLAIM +${task.rewardCoins} 🪙 +${task.rewardGems} 💎"
+                                        else -> "▶️ Play to Complete (+${task.rewardCoins} 🪙)"
+                                    },
                                     color = Color.White,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Black
@@ -1279,7 +1366,8 @@ private fun HelperCreamCard(
     progressText: String,
     avatarRes: Int,
     customAvatarBitmap: android.graphics.Bitmap?,
-    borderColor: Color
+    borderColor: Color,
+    onUpgradeClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -1326,9 +1414,26 @@ private fun HelperCreamCard(
                     color = Color(0xFF6D4C41)
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     RewardBadgePill(badgeText, Color(0xFFAED581), Color(0xFF1B5E20))
                     RewardBadgePill(progressText, Color(0xFF81D4FA), Color(0xFF01579B))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF7B1FA2))
+                            .clickable { onUpgradeClick() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "⬆️ Level Up (2💎)",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }

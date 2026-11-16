@@ -17,8 +17,11 @@ import com.farabe.farabesmomblock.engine.GameState
 import com.farabe.farabesmomblock.remote.RemoteConfigManager
 import com.farabe.farabesmomblock.remote.RemoteGameConfig
 import com.farabe.farabesmomblock.remote.RemoteGift
+import com.farabe.farabesmomblock.remote.RemoteTask
 import com.farabe.farabesmomblock.remote.UpdateSyncWorker
 import com.farabe.farabesmomblock.ui.components.FloatingScore
+import com.farabe.farabesmomblock.ui.screens.HANDCRAFTED_LEVELS
+import com.farabe.farabesmomblock.ui.screens.LevelStage
 import com.farabe.farabesmomblock.ui.theme.GoldAccent
 import com.farabe.farabesmomblock.ui.theme.RoseAccent
 import com.farabe.farabesmomblock.updater.AppUpdater
@@ -388,21 +391,27 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             // Handle line clearing feedback
             val clearRes = result.lineClearResult
+            val combo = result.comboEvent
+            val helperBonusPerLine = (_userSettings.value.farabeHelperLevel + _userSettings.value.kittenHelperLevel) * 3
+
             if (clearRes != null && clearRes.hasClears) {
                 clearingCells.value = clearRes.clearedCells
                 lastClearedBurst.value = lastClearedBurst.value + 1
                 soundManager.playLineClear(clearRes.totalLinesCleared)
 
                 viewModelScope.launch {
-                    val coinsEarned = clearRes.totalLinesCleared * 15
+                    val coinsEarned = clearRes.totalLinesCleared * (15 + helperBonusPerLine)
                     preferencesManager.addCoinsAndHearts(coinsDelta = coinsEarned)
+                    preferencesManager.recordMoveStats(
+                        linesDelta = clearRes.totalLinesCleared,
+                        comboIncrement = if (combo != null && combo.isComboActive) 1 else 0
+                    )
                     delay(260)
                     clearingCells.value = emptySet()
                 }
             }
 
             // Handle combo feedback with warm Bangladeshi Bengali praise
-            val combo = result.comboEvent
             if (combo != null && combo.isComboActive) {
                 soundManager.playCombo(combo.streak)
                 if (combo.streak >= 3) {
@@ -420,20 +429,28 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 showBanner("MULTI-CLEAR! চমৎকার!", "+${result.scoreBreakdown?.linePoints} Points!")
             }
 
-            val levelTarget = getLevelTargetScore()
-            if (levelTarget != null && !isLevelCompleted.value && engine.currentState.score >= levelTarget) {
+            val stage = getLevelStage()
+            if (stage != null && !isLevelCompleted.value &&
+                (engine.currentState.score >= stage.targetScore || engine.currentState.linesClearedTotal >= stage.targetLines)
+            ) {
                 isLevelCompleted.value = true
                 soundManager.playUnlockReward()
                 playWinVoice()
-                showBanner("LEVEL COMPLETE! 🎉🌟", "অভিনন্দন আম্মু! Target $levelTarget Reached!")
+                showBanner(
+                    "LEVEL ${stage.levelNumber} WON! 🎉🌟",
+                    "অভিনন্দন আম্মু! Level ${(stage.levelNumber + 1).coerceAtMost(12)} Unlocked! (+${stage.rewardCoins} 🪙)"
+                )
                 viewModelScope.launch {
-                    preferencesManager.addCoinsAndHearts(coinsDelta = 100, gemsDelta = 1)
+                    preferencesManager.markLevelCompleted(stage.levelNumber, stage.rewardCoins)
+                    repository.clearActiveSave()
                 }
             }
 
             // Auto save & milestone checks
             viewModelScope.launch {
-                repository.saveActiveGame(engine.currentState, activeGameMode.value)
+                if (!isLevelCompleted.value) {
+                    repository.saveActiveGame(engine.currentState, activeGameMode.value)
+                }
                 val newMilestones = repository.checkAndUnlockMilestones(
                     engine.currentState.score,
                     engine.currentState.linesClearedTotal
@@ -444,14 +461,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Check game over -> trigger Farabe's Win/Lose Voice Note cleanly
+            // Check game over -> trigger Farabe's Win/Lose Voice Note cleanly & update life/coins
             if (result.isGameOver) {
                 soundManager.playGameOver()
                 val isNewBest = engine.currentState.score >= engine.currentState.highScore && engine.currentState.score > 0
                 if (isNewBest || isLevelCompleted.value) {
                     playWinVoice()
+                    viewModelScope.launch {
+                        preferencesManager.addCoinsAndHearts(coinsDelta = 50, heartsDelta = 1, gemsDelta = 1)
+                    }
                 } else {
                     playLoseVoice()
+                    viewModelScope.launch {
+                        val heartDelta = if (activeGameMode.value == "RELAX") 0 else -1
+                        preferencesManager.addCoinsAndHearts(coinsDelta = 20, heartsDelta = heartDelta)
+                    }
                 }
                 viewModelScope.launch {
                     repository.clearActiveSave()
@@ -523,15 +547,58 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun getLevelStage(mode: String = activeGameMode.value): LevelStage? {
+        if (!mode.startsWith("LEVEL_")) return null
+        val num = mode.removePrefix("LEVEL_").toIntOrNull() ?: return null
+        return HANDCRAFTED_LEVELS.firstOrNull { it.levelNumber == num }
+    }
+
     fun getLevelTargetScore(mode: String = activeGameMode.value): Int? {
-        return when (mode) {
-            "LEVEL_1" -> 300
-            "LEVEL_2" -> 600
-            "LEVEL_3" -> 1000
-            "LEVEL_4" -> 1500
-            "LEVEL_5" -> 2200
-            "LEVEL_6" -> 3500
-            else -> null
+        return getLevelStage(mode)?.targetScore
+    }
+
+    fun startNextChallengeLevel() {
+        val currentStage = getLevelStage()
+        val nextNum = if (currentStage != null) {
+            (currentStage.levelNumber + 1).coerceAtMost(HANDCRAFTED_LEVELS.size)
+        } else {
+            _userSettings.value.highestUnlockedLevel.coerceAtMost(HANDCRAFTED_LEVELS.size)
+        }
+        startNewGame("LEVEL_$nextNum")
+    }
+
+    fun refillMomHeartsFree() {
+        soundManager.playUnlockReward()
+        viewModelScope.launch {
+            preferencesManager.addCoinsAndHearts(coinsDelta = 0, heartsDelta = 5)
+            lastSyncBanner.value = "❤️ Farabe refilled +5 Hearts for Mom!"
+        }
+    }
+
+    fun claimTask(task: RemoteTask) {
+        viewModelScope.launch {
+            preferencesManager.markTaskClaimed(
+                taskId = task.id,
+                rewardCoins = task.rewardCoins,
+                rewardGems = task.rewardGems,
+                rewardHearts = 1
+            )
+            soundManager.playUnlockReward()
+            lastSyncBanner.value = "🎉 Claimed +${task.rewardCoins} 🪙, +${task.rewardGems} 💎 & +1 ❤️ from ${task.helperName}!"
+        }
+    }
+
+    fun upgradeHelper(isFarabe: Boolean) {
+        viewModelScope.launch {
+            val ok = preferencesManager.upgradeHelper(isFarabe, gemCost = 2)
+            if (ok) {
+                soundManager.playUnlockReward()
+                val who = if (isFarabe) "Farabe ❤️" else "Misti Kitten 🐾"
+                lastSyncBanner.value = "🌟 Upgraded $who! Extra coin bonus unlocked!"
+            } else {
+                soundManager.playInvalidMove()
+                lastSyncBanner.value = "💎 Need 2 Gems to upgrade! Complete tasks or levels to earn Gems."
+            }
         }
     }
 
