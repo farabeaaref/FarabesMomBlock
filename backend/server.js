@@ -8,12 +8,28 @@ const PORT = process.env.PORT || 8787;
 const ROOT_DIR = __dirname;
 const PROJECT_DIR = path.resolve(ROOT_DIR, '..');
 const CONFIG_PATH = path.join(ROOT_DIR, 'config.json');
+const PLAYERS_PATH = path.join(ROOT_DIR, 'players.json');
 const UPLOADS_DIR = path.join(ROOT_DIR, 'uploads');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
 const CLOUD_SYNC_DIR = path.join(PROJECT_DIR, 'cloud-sync');
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+
+function readPlayers() {
+  try {
+    if (fs.existsSync(PLAYERS_PATH)) {
+      return JSON.parse(fs.readFileSync(PLAYERS_PATH, 'utf8'));
+    }
+  } catch (_) {}
+  return {};
+}
+
+function writePlayers(playersObj) {
+  try {
+    fs.writeFileSync(PLAYERS_PATH, JSON.stringify(playersObj, null, 2), 'utf8');
+  } catch (_) {}
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -191,6 +207,79 @@ const server = http.createServer(async (req, res) => {
         emulatorUrl: `http://10.0.2.2:${PORT}/api/config`,
         lanUrls: getLanIps().map(ip => `http://${ip}:${PORT}/api/config`),
         uploads: fs.readdirSync(UPLOADS_DIR)
+      });
+    }
+
+    // 3B. Telemetry Heartbeat from Active Game Players (Mom's phone / Emulator)
+    if (req.method === 'POST' && pathname === '/api/telemetry/heartbeat') {
+      const body = await readJsonBody(req);
+      const players = readPlayers();
+      const playerId = String(body.playerId || 'mom_default_device').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const now = Date.now();
+      const prev = players[playerId] || {};
+      const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').replace('::ffff:', '');
+
+      players[playerId] = {
+        playerId,
+        playerName: body.playerName || prev.playerName || 'Mom ❤️',
+        deviceModel: body.deviceModel || prev.deviceModel || 'Android Phone',
+        appVersion: body.appVersion || prev.appVersion || '1.2.0',
+        currentActivity: body.currentActivity || 'Playing Game',
+        gameMode: body.gameMode || 'LEVEL_1',
+        currentScore: Number(body.currentScore ?? prev.currentScore ?? 0),
+        highScore: Number(body.highScore ?? prev.highScore ?? 0),
+        coins: Number(body.coins ?? prev.coins ?? 500),
+        hearts: Number(body.hearts ?? prev.hearts ?? 5),
+        gems: Number(body.gems ?? prev.gems ?? 5),
+        highestUnlockedLevel: Number(body.highestUnlockedLevel ?? prev.highestUnlockedLevel ?? 1),
+        completedLevelsCount: Number(body.completedLevelsCount ?? prev.completedLevelsCount ?? 0),
+        totalGamesPlayed: Number(body.totalGamesPlayed ?? prev.totalGamesPlayed ?? 0),
+        totalLinesCleared: Number(body.totalLinesCleared ?? prev.totalLinesCleared ?? 0),
+        sessionActiveSeconds: Number(body.sessionActiveSeconds ?? prev.sessionActiveSeconds ?? 0),
+        totalPlayTimeSeconds: Number(body.totalPlayTimeSeconds ?? prev.totalPlayTimeSeconds ?? 0),
+        isForeground: body.isForeground !== false,
+        ipAddress: clientIp || prev.ipAddress || 'local',
+        firstSeenAt: prev.firstSeenAt || new Date(now).toISOString(),
+        lastSeenAt: new Date(now).toISOString(),
+        lastHeartbeatMs: now
+      };
+
+      writePlayers(players);
+      return sendJson(res, 200, { ok: true, serverTimeMs: now });
+    }
+
+    // 3C. Get Active & Recent Players List for Admin Studio
+    if (req.method === 'GET' && pathname === '/api/telemetry/players') {
+      const players = readPlayers();
+      const now = Date.now();
+      const list = Object.values(players).map(p => {
+        const elapsedSec = Math.max(0, Math.floor((now - (p.lastHeartbeatMs || 0)) / 1000));
+        const isOnline = p.isForeground !== false && elapsedSec <= 35;
+        const isIdle = !isOnline && elapsedSec <= 120;
+        const liveSessionSeconds = isOnline
+          ? (Number(p.sessionActiveSeconds || 0) + Math.min(15, elapsedSec))
+          : Number(p.sessionActiveSeconds || 0);
+        const liveTotalSeconds = isOnline
+          ? (Number(p.totalPlayTimeSeconds || 0) + Math.min(15, elapsedSec))
+          : Number(p.totalPlayTimeSeconds || 0);
+        return {
+          ...p,
+          isOnline,
+          isIdle,
+          secondsSinceLastSeen: elapsedSec,
+          liveSessionSeconds,
+          liveTotalSeconds
+        };
+      }).sort((a, b) => {
+        if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
+        return (b.lastHeartbeatMs || 0) - (a.lastHeartbeatMs || 0);
+      });
+
+      return sendJson(res, 200, {
+        ok: true,
+        onlineCount: list.filter(p => p.isOnline).length,
+        totalTracked: list.length,
+        players: list
       });
     }
 

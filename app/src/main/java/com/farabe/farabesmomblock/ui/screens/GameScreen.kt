@@ -49,6 +49,7 @@ import com.farabe.farabesmomblock.ui.components.ComboBanner
 import com.farabe.farabesmomblock.ui.components.CuteMascot
 import com.farabe.farabesmomblock.ui.components.DragAuraBeam
 import com.farabe.farabesmomblock.ui.components.DynamicGameBackground
+import com.farabe.farabesmomblock.ui.components.appleGlassBar
 import com.farabe.farabesmomblock.ui.components.FairyLights
 import com.farabe.farabesmomblock.ui.components.ParticleOverlay
 import com.farabe.farabesmomblock.ui.components.PieceEdgeFlameEffect
@@ -193,11 +194,14 @@ fun GameScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(remoteTheme.surfaceColor.copy(alpha = 0.90f))
-                            .border(1.dp, remoteTheme.goldAccent.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                            .padding(horizontal = 14.dp, vertical = 2.dp)
+                            .appleGlassBar(
+                                shape = RoundedCornerShape(14.dp),
+                                tintColor = remoteTheme.surfaceColor,
+                                strokeWidth = 1.4.dp,
+                                accentRim = remoteTheme.goldAccent
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {

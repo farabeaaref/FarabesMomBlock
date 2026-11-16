@@ -11,3 +11,5 @@ FarabesMomBlock.apk
 backend/uploads/
 .DS_Store
 Thumbs.db
+
+backend/players.json

@@ -210,4 +210,34 @@ class RemoteConfigManager(
             false
         }
     }
+
+    /**
+     * Sends live player telemetry heartbeat to Farabe's Game Control Studio
+     * so Farabe can see who is playing, active duration, score, and level in real time.
+     */
+    suspend fun sendTelemetryHeartbeat(payloadJson: String) = withContext(Dispatchers.IO) {
+        try {
+            val settings = preferencesManager.settingsFlow.first()
+            val configUrl = settings.backendUrl.trim()
+            if (configUrl.isBlank()) return@withContext
+            val baseOrigin = configUrl.substringBefore("/api/").trimEnd('/')
+            if (baseOrigin.isBlank()) return@withContext
+
+            val heartbeatUrl = "$baseOrigin/api/telemetry/heartbeat"
+            val conn = (URL(heartbeatUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 1500
+                readTimeout = 2000
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            }
+            conn.outputStream.use { out ->
+                out.write(payloadJson.toByteArray(Charsets.UTF_8))
+            }
+            conn.responseCode
+            conn.disconnect()
+        } catch (_: Exception) {
+            // Silently ignore when playing offline
+        }
+    }
 }

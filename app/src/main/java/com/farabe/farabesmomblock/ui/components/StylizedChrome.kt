@@ -50,11 +50,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -299,7 +301,75 @@ fun AmbientFirefliesOverlay(
 }
 
 /**
- * Stylized Top Status Bar matching reference screenshot (Hearts + Coins + Sync + Settings).
+ * Reusable Apple Liquid Glass / visionOS Frosted Glass Surface Modifier with
+ * Diagonal Linear Specular Stroke Lines & Top Inner Hairline Glint!
+ */
+fun Modifier.appleGlassBar(
+    shape: Shape = RoundedCornerShape(24.dp),
+    tintColor: Color = Color(0xFF2B144A),
+    strokeWidth: androidx.compose.ui.unit.Dp = 1.5.dp,
+    accentRim: Color = Color(0xFF80D8FF)
+): Modifier = this
+    .clip(shape)
+    .background(
+        Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.24f),
+                tintColor.copy(alpha = 0.62f),
+                Color(0xFF120623).copy(alpha = 0.74f),
+                tintColor.copy(alpha = 0.56f)
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(900f, 320f)
+        )
+    )
+    .border(
+        width = strokeWidth,
+        brush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.90f),
+                accentRim.copy(alpha = 0.55f),
+                Color.White.copy(alpha = 0.14f),
+                Color(0xFFFFD54F).copy(alpha = 0.68f)
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(800f, 260f)
+        ),
+        shape = shape
+    )
+    .drawWithContent {
+        drawContent()
+        // Inner top linear specular hairline
+        drawLine(
+            brush = Brush.horizontalGradient(
+                listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = 0.68f),
+                    accentRim.copy(alpha = 0.45f),
+                    Color.Transparent
+                )
+            ),
+            start = Offset(size.width * 0.08f, 1.5f),
+            end = Offset(size.width * 0.92f, 1.5f),
+            strokeWidth = 1.8f
+        )
+        // Subtle bottom linear rim line
+        drawLine(
+            brush = Brush.horizontalGradient(
+                listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = 0.22f),
+                    Color.Transparent
+                )
+            ),
+            start = Offset(size.width * 0.18f, size.height - 1.5f),
+            end = Offset(size.width * 0.82f, size.height - 1.5f),
+            strokeWidth = 1.2f
+        )
+    }
+
+/**
+ * Stylized Apple Glass Top Status Bar with Linear Specular Stroke Lines (Hearts + Coins + Sync + Settings).
  */
 @Composable
 fun StylizedTopBar(
@@ -316,12 +386,15 @@ fun StylizedTopBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(theme.primaryColor.copy(alpha = 0.96f), theme.primaryColor.copy(alpha = 0.78f))
-                )
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .shadow(10.dp, RoundedCornerShape(24.dp))
+            .appleGlassBar(
+                shape = RoundedCornerShape(24.dp),
+                tintColor = theme.primaryColor,
+                strokeWidth = 1.6.dp,
+                accentRim = CyanActiveGlow
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -329,21 +402,24 @@ fun StylizedTopBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Hearts Pill
+            // Apple Glass Hearts Pill with Linear Stroke
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF1A0A2E).copy(alpha = 0.85f))
-                    .border(1.5.dp, theme.borderColor, RoundedCornerShape(20.dp))
+                    .appleGlassBar(
+                        shape = RoundedCornerShape(20.dp),
+                        tintColor = Color(0xFF280E42),
+                        strokeWidth = 1.3.dp,
+                        accentRim = Color(0xFFFF80AB)
+                    )
                     .clickable { onHeartsClick() }
-                    .padding(start = 8.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
+                    .padding(start = 9.dp, end = 7.dp, top = 5.dp, bottom = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Default.Favorite,
                     contentDescription = "Hearts",
                     tint = Color(0xFFFF3B5C),
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(19.dp)
                 )
                 Spacer(modifier = Modifier.width(5.dp))
                 Text(
@@ -357,21 +433,25 @@ fun StylizedTopBar(
                     modifier = Modifier
                         .size(18.dp)
                         .clip(CircleShape)
-                        .background(theme.accentColor),
+                        .background(theme.accentColor)
+                        .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
                 }
             }
 
-            // Gold Coins Pill
+            // Apple Glass Gold Coins Pill with Linear Stroke
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF1A0A2E).copy(alpha = 0.85f))
-                    .border(1.5.dp, theme.borderColor, RoundedCornerShape(20.dp))
+                    .appleGlassBar(
+                        shape = RoundedCornerShape(20.dp),
+                        tintColor = Color(0xFF280E42),
+                        strokeWidth = 1.3.dp,
+                        accentRim = theme.goldAccent
+                    )
                     .clickable { onCoinsClick() }
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                    .padding(horizontal = 11.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -380,7 +460,8 @@ fun StylizedTopBar(
                         .clip(CircleShape)
                         .background(
                             Brush.verticalGradient(listOf(Color(0xFFFFE57F), Color(0xFFFFA000)))
-                        ),
+                        )
+                        .border(1.dp, Color.White.copy(alpha = 0.7f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -404,13 +485,16 @@ fun StylizedTopBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Live Backend Sync Pill
+            // Live Backend Sync Apple Glass Button
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.surfaceColor)
-                    .border(1.5.dp, theme.borderColor, RoundedCornerShape(12.dp))
+                    .appleGlassBar(
+                        shape = RoundedCornerShape(13.dp),
+                        tintColor = theme.surfaceColor,
+                        strokeWidth = 1.3.dp,
+                        accentRim = CyanActiveGlow
+                    )
                     .clickable { onSyncClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -418,17 +502,20 @@ fun StylizedTopBar(
                     imageVector = Icons.Default.Sync,
                     contentDescription = "Sync from Farabe",
                     tint = if (isSyncing) CyanActiveGlow else theme.goldAccent,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(19.dp)
                 )
             }
 
-            // Settings Gear Button
+            // Settings Gear Apple Glass Button
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(theme.surfaceColor)
-                    .border(1.5.dp, theme.borderColor, RoundedCornerShape(12.dp))
+                    .appleGlassBar(
+                        shape = RoundedCornerShape(13.dp),
+                        tintColor = theme.surfaceColor,
+                        strokeWidth = 1.3.dp,
+                        accentRim = Color.White
+                    )
                     .clickable { onSettingsClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -436,7 +523,7 @@ fun StylizedTopBar(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Settings",
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(19.dp)
                 )
             }
         }
@@ -444,7 +531,7 @@ fun StylizedTopBar(
 }
 
 /**
- * 5-Tab Floating Glossy Bottom Navigation Bar matching the uploaded reference.
+ * 5-Tab Floating Apple Liquid Glass Bottom Navigation Dock with Linear Stroke Lines.
  */
 @Composable
 fun StylizedBottomNavBar(
@@ -457,43 +544,57 @@ fun StylizedBottomNavBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(theme.surfaceColor, theme.primaryColor)
-                )
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .shadow(14.dp, RoundedCornerShape(26.dp))
+            .appleGlassBar(
+                shape = RoundedCornerShape(26.dp),
+                tintColor = theme.surfaceColor,
+                strokeWidth = 1.6.dp,
+                accentRim = CyanActiveGlow
             )
-            .border(1.5.dp, theme.borderColor.copy(alpha = 0.8f), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-            .padding(horizontal = 6.dp, vertical = 8.dp)
+            .padding(horizontal = 6.dp, vertical = 7.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.CenterVertically
         ) {
             HubTab.values().forEach { tab ->
                 val isSelected = tab == selectedTab
-                val lift by animateDpAsState(targetValue = if (isSelected) (-6).dp else 0.dp, label = "tabLift")
+                val lift by animateDpAsState(targetValue = if (isSelected) (-4).dp else 0.dp, label = "tabLift")
 
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .offset(y = lift)
                         .padding(horizontal = 3.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(
                             if (isSelected) {
-                                Brush.verticalGradient(listOf(CyanActiveGlow, Color(0xFF0288D1)))
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.36f),
+                                        CyanActiveGlow.copy(alpha = 0.72f),
+                                        Color(0xFF0288D1).copy(alpha = 0.82f)
+                                    )
+                                )
                             } else {
-                                Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+                                Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
                             }
                         )
                         .then(
                             if (isSelected) {
-                                Modifier.border(1.5.dp, Color.White.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
+                                Modifier.border(
+                                    width = 1.4.dp,
+                                    brush = Brush.linearGradient(
+                                        listOf(Color.White, CyanActiveGlow, Color.White.copy(alpha = 0.3f))
+                                    ),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
                             } else Modifier
                         )
                         .clickable { onTabSelected(tab) }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 7.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -501,8 +602,8 @@ fun StylizedBottomNavBar(
                             Icon(
                                 imageVector = tab.icon,
                                 contentDescription = tab.label,
-                                tint = if (isSelected) Color.White else WarmCream.copy(alpha = 0.82f),
-                                modifier = Modifier.size(if (isSelected) 26.dp else 22.dp)
+                                tint = if (isSelected) Color.White else WarmCream.copy(alpha = 0.85f),
+                                modifier = Modifier.size(if (isSelected) 25.dp else 21.dp)
                             )
                             if (hasUnreadGiftOrLetter && (tab == HubTab.GIFTS || tab == HubTab.HELPERS)) {
                                 Box(
@@ -520,7 +621,7 @@ fun StylizedBottomNavBar(
                             text = tab.label,
                             fontSize = 10.sp,
                             fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
-                            color = if (isSelected) Color.White else WarmCream.copy(alpha = 0.8f)
+                            color = if (isSelected) Color.White else WarmCream.copy(alpha = 0.82f)
                         )
                     }
                 }

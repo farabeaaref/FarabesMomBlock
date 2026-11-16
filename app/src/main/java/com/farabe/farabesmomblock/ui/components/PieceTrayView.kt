@@ -66,8 +66,12 @@ fun PieceTrayView(
             .fillMaxWidth()
             .height(130.dp)
             .padding(horizontal = 10.dp, vertical = 4.dp)
-            .background(surfaceColor.copy(alpha = 0.90f), RoundedCornerShape(20.dp))
-            .border(1.5.dp, borderColor, RoundedCornerShape(20.dp)),
+            .appleGlassBar(
+                shape = RoundedCornerShape(22.dp),
+                tintColor = surfaceColor,
+                strokeWidth = 1.6.dp,
+                accentRim = borderColor
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(

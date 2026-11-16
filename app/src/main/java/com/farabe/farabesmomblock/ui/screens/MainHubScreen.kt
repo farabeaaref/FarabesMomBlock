@@ -83,6 +83,7 @@ import com.farabe.farabesmomblock.ui.components.CreamCardBg
 import com.farabe.farabesmomblock.ui.components.CreamGoldModalDialog
 import com.farabe.farabesmomblock.ui.components.CyanActiveGlow
 import com.farabe.farabesmomblock.ui.components.DynamicGameBackground
+import com.farabe.farabesmomblock.ui.components.appleGlassBar
 import com.farabe.farabesmomblock.ui.components.GlossyPlayButton
 import com.farabe.farabesmomblock.ui.components.HubTab
 import com.farabe.farabesmomblock.ui.components.StylizedBottomNavBar
@@ -532,13 +533,16 @@ private fun HomeTabContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // 1. Milestone Key & Treasure Chest Track (matching top of Screen #1 in reference)
+        // 1. Apple Glass Milestone Key & Treasure Chest Track with Linear Stroke Lines
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(theme.primaryColor.copy(alpha = 0.78f))
-                .border(1.5.dp, theme.borderColor.copy(alpha = 0.75f), RoundedCornerShape(18.dp))
+                .appleGlassBar(
+                    shape = RoundedCornerShape(20.dp),
+                    tintColor = theme.primaryColor,
+                    strokeWidth = 1.5.dp,
+                    accentRim = theme.goldAccent
+                )
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Row(

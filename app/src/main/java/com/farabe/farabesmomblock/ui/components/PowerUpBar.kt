@@ -1,15 +1,11 @@
 package com.farabe.farabesmomblock.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,17 +18,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.farabe.farabesmomblock.ui.theme.CardBorder
 import com.farabe.farabesmomblock.ui.theme.GoldAccent
 import com.farabe.farabesmomblock.ui.theme.Lavender
 import com.farabe.farabesmomblock.ui.theme.Mint
-import com.farabe.farabesmomblock.ui.theme.SoftCardBg
-import com.farabe.farabesmomblock.ui.theme.WarmCream
 
+/**
+ * Apple Liquid Glass Power-Up Bar (Undo, Hint, Shuffle) with Linear Specular Stroke Lines!
+ */
 @Composable
 fun PowerUpBar(
     canUndo: Boolean,
@@ -44,15 +42,16 @@ fun PowerUpBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         PowerUpButton(
             icon = Icons.Default.Undo,
             label = "Undo",
             enabled = canUndo,
             tint = Lavender,
-            onClick = onUndoClick
+            onClick = onUndoClick,
+            modifier = Modifier.weight(1f)
         )
 
         PowerUpButton(
@@ -60,7 +59,8 @@ fun PowerUpBar(
             label = "Hint",
             enabled = true,
             tint = GoldAccent,
-            onClick = onHintClick
+            onClick = onHintClick,
+            modifier = Modifier.weight(1f)
         )
 
         PowerUpButton(
@@ -68,7 +68,8 @@ fun PowerUpBar(
             label = "Shuffle",
             enabled = true,
             tint = Mint,
-            onClick = onShuffleClick
+            onClick = onShuffleClick,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -78,18 +79,23 @@ private fun PowerUpButton(
     icon: ImageVector,
     label: String,
     enabled: Boolean,
-    tint: androidx.compose.ui.graphics.Color,
-    onClick: () -> Unit
+    tint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val alpha = if (enabled) 1.0f else 0.4f
+    val alpha = if (enabled) 1.0f else 0.45f
 
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(SoftCardBg.copy(alpha = alpha))
-            .border(1.dp, CardBorder.copy(alpha = alpha), RoundedCornerShape(12.dp))
+        modifier = modifier
+            .alpha(alpha)
+            .appleGlassBar(
+                shape = RoundedCornerShape(16.dp),
+                tintColor = Color(0xFF33185A),
+                strokeWidth = 1.4.dp,
+                accentRim = tint
+            )
             .clickable(enabled = enabled) { onClick() }
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -99,14 +105,15 @@ private fun PowerUpButton(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = tint.copy(alpha = alpha),
+                tint = tint,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.size(6.dp))
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = WarmCream.copy(alpha = alpha)
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
             )
         }
     }

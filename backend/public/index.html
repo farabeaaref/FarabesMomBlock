@@ -88,6 +88,45 @@
     .preview-chip {
       display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: #86efac;
     }
+    .players-banner {
+      background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(38, 16, 68, 0.78));
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1.5px solid rgba(255,255,255,0.28);
+      border-radius: 22px;
+      padding: 18px 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.35);
+    }
+    .players-header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 12px; margin-bottom: 14px;
+    }
+    .player-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px;
+    }
+    .player-card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.11), rgba(20, 8, 38, 0.82));
+      border: 1px solid rgba(255,255,255,0.24);
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+    }
+    .player-card.online {
+      border-color: #4ade80;
+      box-shadow: 0 0 20px rgba(74, 222, 128, 0.18), inset 0 1px 0 rgba(255,255,255,0.35);
+    }
+    .stat-pills {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+    }
+    .stat-pill {
+      background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.18);
+      padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--text);
+    }
+    .pulse-dot {
+      display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #4ade80;
+      box-shadow: 0 0 10px #4ade80; margin-right: 6px;
+    }
   </style>
 </head>
 <body>
@@ -107,6 +146,26 @@
 
     <div class="info-bar" id="serverInfo">
       Loading connection info...
+    </div>
+
+    <!-- LIVE ACTIVE PLAYERS MONITOR -->
+    <div class="players-banner">
+      <div class="players-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:20px;">📡</span>
+          <div>
+            <div style="font-size:16px; font-weight:800; color:var(--gold);">Live Active Players &amp; Real-Time Game Telemetry</div>
+            <div style="font-size:12px; color:var(--muted);">See who is playing right now, their active session time, current mode/level, score, coins, hearts &amp; device info.</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="badge" id="onlineCountBadge" style="background:rgba(74,222,128,0.16); color:#4ade80; border-color:#4ade80;">🟢 0 Online Now</span>
+          <button class="btn btn-purple" style="width:auto; margin:0; padding:6px 12px; font-size:12px;" onclick="fetchActivePlayers()">🔄 Refresh</button>
+        </div>
+      </div>
+      <div id="activePlayersContainer" class="player-grid">
+        <div style="font-size:13px; color:var(--muted);">Waiting for Mom's phone or emulator to send live game heartbeat...</div>
+      </div>
     </div>
 
     <div class="grid">
@@ -667,7 +726,104 @@
       }
     }
 
+    // --- Live Active Players Monitor (Auto-Polls + 1s Live Active Timer) ---
+    let latestPlayersList = [];
+    let lastPlayersFetchMs = Date.now();
+
+    function formatDuration(totalSec) {
+      const s = Math.max(0, Math.floor(Number(totalSec) || 0));
+      const hrs = Math.floor(s / 3600);
+      const mins = Math.floor((s % 3600) / 60);
+      const secs = s % 60;
+      if (hrs > 0) return `${hrs}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+      return `${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+    }
+
+    function formatLastSeen(secAgo) {
+      if (secAgo <= 5) return 'Just now';
+      if (secAgo < 60) return `${secAgo}s ago`;
+      const m = Math.floor(secAgo / 60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      return `${h}h ${m % 60}m ago`;
+    }
+
+    function renderPlayersCards() {
+      const container = document.getElementById('activePlayersContainer');
+      const badge = document.getElementById('onlineCountBadge');
+      const driftSec = Math.floor((Date.now() - lastPlayersFetchMs) / 1000);
+
+      const onlineCount = latestPlayersList.filter(p => p.isOnline).length;
+      badge.textContent = onlineCount > 0 ? `🟢 ${onlineCount} Player${onlineCount > 1 ? 's' : ''} Active Now` : `⚪ 0 Online (${latestPlayersList.length} Tracked)`;
+      badge.style.color = onlineCount > 0 ? '#4ade80' : '#c2b2d8';
+      badge.style.borderColor = onlineCount > 0 ? '#4ade80' : '#5a2e98';
+
+      if (!latestPlayersList.length) {
+        container.innerHTML = `<div style="font-size:13px; color:var(--muted);">No active player sessions recorded yet. Open the game on Mom's phone or emulator to see live telemetry!</div>`;
+        return;
+      }
+
+      container.innerHTML = latestPlayersList.map(p => {
+        const sessionSec = (p.liveSessionSeconds || 0) + (p.isOnline ? driftSec : 0);
+        const totalSec = (p.liveTotalSeconds || 0) + (p.isOnline ? driftSec : 0);
+        const lastSeenSec = (p.secondsSinceLastSeen || 0) + driftSec;
+        const statusHtml = p.isOnline
+          ? `<span style="color:#4ade80; font-weight:800; font-size:12px;"><span class="pulse-dot"></span>LIVE PLAYING</span>`
+          : (p.isIdle
+              ? `<span style="color:#fbbf24; font-weight:700; font-size:12px;">🟡 IDLE (${formatLastSeen(lastSeenSec)})</span>`
+              : `<span style="color:#9ca3af; font-weight:600; font-size:12px;">⚪ Offline (${formatLastSeen(lastSeenSec)})</span>`);
+
+        return `
+          <div class="player-card ${p.isOnline ? 'online' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+              <div>
+                <div style="font-size:16px; font-weight:800; color:#fff;">👩 ${p.playerName}</div>
+                <div style="font-size:11px; color:var(--muted); margin-top:2px;">📱 ${p.deviceModel} • v${p.appVersion} • IP: ${p.ipAddress || 'local'}</div>
+              </div>
+              <div>${statusHtml}</div>
+            </div>
+
+            <div style="margin-top:10px; padding:8px 12px; border-radius:10px; background:rgba(0,0,0,0.32); border:1px solid rgba(255,255,255,0.12); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Current Activity</div>
+                <div style="font-size:13px; font-weight:800; color:var(--gold);">🎮 ${p.currentActivity}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">⏱️ Session Active / Total Time</div>
+                <div style="font-size:13px; font-weight:800; color:#86efac;">${formatDuration(sessionSec)} <span style="color:var(--muted); font-weight:600;">(Total: ${formatDuration(totalSec)})</span></div>
+              </div>
+            </div>
+
+            <div class="stat-pills">
+              <span class="stat-pill">🏆 Score: ${p.currentScore} (Best: ${p.highScore})</span>
+              <span class="stat-pill">⭐ Challenge: Lv.${p.highestUnlockedLevel}/12 (${p.completedLevelsCount} Won)</span>
+              <span class="stat-pill">🪙 ${Number(p.coins).toLocaleString()} Coins</span>
+              <span class="stat-pill">❤️ ${p.hearts} Hearts</span>
+              <span class="stat-pill">💎 ${p.gems} Gems</span>
+              <span class="stat-pill">📏 ${p.totalLinesCleared} Lines</span>
+              <span class="stat-pill">🎲 ${p.totalGamesPlayed} Games</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function fetchActivePlayers() {
+      try {
+        const res = await fetch('/api/telemetry/players');
+        const data = await res.json();
+        if (data.ok) {
+          latestPlayersList = data.players || [];
+          lastPlayersFetchMs = Date.now();
+          renderPlayersCards();
+        }
+      } catch (_) {}
+    }
+
     loadInitial();
+    fetchActivePlayers();
+    setInterval(fetchActivePlayers, 3000);
+    setInterval(renderPlayersCards, 1000);
   </script>
 </body>
 </html>

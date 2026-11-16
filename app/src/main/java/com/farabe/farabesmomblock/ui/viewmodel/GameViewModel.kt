@@ -109,6 +109,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val lastClearedBurst = MutableStateFlow(0)
     val isPlayingVoice = MutableStateFlow(false)
 
+    // Live Telemetry Session Tracking
+    private var sessionActiveSeconds: Int = 0
+    private var isAppInForeground: Boolean = true
+    private var currentScreenName: String = "Home Hub"
+    private val deviceIdFallback: String = "mom_${android.os.Build.MODEL.replace(" ", "_")}_${(1000..9999).random()}"
+
     // Daily surprise message
     val dailyMessage = MutableStateFlow<String?>(null)
 
@@ -157,6 +163,62 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             syncRemoteConfig(isManual = false)
             checkForUpdate()
         }
+
+        // Real-time Active Player Heartbeat loop (every 5 seconds while app is open)
+        viewModelScope.launch {
+            delay(1500)
+            pushTelemetryNow()
+            while (true) {
+                delay(5000)
+                if (isAppInForeground) {
+                    sessionActiveSeconds += 5
+                    preferencesManager.recordActivePlayTime(5, deviceIdFallback)
+                    pushTelemetryNow()
+                }
+            }
+        }
+    }
+
+    fun onAppForegroundChanged(inForeground: Boolean) {
+        isAppInForeground = inForeground
+        viewModelScope.launch {
+            pushTelemetryNow()
+        }
+    }
+
+    fun updateCurrentScreenActivity(label: String) {
+        currentScreenName = label
+        viewModelScope.launch {
+            pushTelemetryNow()
+        }
+    }
+
+    private suspend fun pushTelemetryNow() {
+        val s = _userSettings.value
+        val g = _gameState.value
+        val pid = s.playerId.ifBlank { deviceIdFallback }
+        val devModel = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} (Android ${android.os.Build.VERSION.RELEASE})"
+        val json = org.json.JSONObject().apply {
+            put("playerId", pid)
+            put("playerName", s.momName)
+            put("deviceModel", devModel)
+            put("appVersion", "1.2.0")
+            put("currentActivity", currentScreenName)
+            put("gameMode", activeGameMode.value)
+            put("currentScore", g.score)
+            put("highScore", maxOf(g.highScore, s.allTimeHighScore))
+            put("coins", s.coins)
+            put("hearts", s.hearts)
+            put("gems", s.gems)
+            put("highestUnlockedLevel", s.highestUnlockedLevel)
+            put("completedLevelsCount", s.completedLevels.size)
+            put("totalGamesPlayed", s.totalGamesPlayed)
+            put("totalLinesCleared", s.totalLinesClearedAllTime)
+            put("sessionActiveSeconds", sessionActiveSeconds)
+            put("totalPlayTimeSeconds", s.totalPlayTimeSeconds)
+            put("isForeground", isAppInForeground)
+        }.toString()
+        remoteConfigManager.sendTelemetryHeartbeat(json)
     }
 
     // --- Live Game Studio Sync & Gift Handlers ---
@@ -451,6 +513,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (!isLevelCompleted.value) {
                     repository.saveActiveGame(engine.currentState, activeGameMode.value)
                 }
+                pushTelemetryNow()
                 val newMilestones = repository.checkAndUnlockMilestones(
                     engine.currentState.score,
                     engine.currentState.linesClearedTotal
@@ -537,6 +600,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             repository.clearActiveSave()
             repository.saveActiveGame(engine.currentState, mode)
             preferencesManager.incrementGamesPlayed()
+            currentScreenName = "Playing $mode"
+            pushTelemetryNow()
         }
     }
 

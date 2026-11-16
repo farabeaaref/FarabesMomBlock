@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        gameViewModel.onAppForegroundChanged(true)
         if (gameViewModel.soundManager.musicVolume > 0.05f) {
             gameViewModel.soundManager.startBackgroundMusic()
         }
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        gameViewModel.onAppForegroundChanged(false)
         gameViewModel.soundManager.stopBackgroundMusic()
     }
 }
@@ -100,19 +102,26 @@ fun AppNavigation(viewModel: GameViewModel) {
             }
 
             composable("home") {
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    viewModel.updateCurrentScreenActivity("Home Hub")
+                }
                 MainHubScreen(
                     viewModel = viewModel,
                     onPlayMode = { mode ->
                         viewModel.startNewGame(mode)
+                        viewModel.updateCurrentScreenActivity("Playing $mode")
                         navController.navigate("game")
                     },
                     onOpenLevels = {
+                        viewModel.updateCurrentScreenActivity("Challenge Roadmap")
                         navController.navigate("levels")
                     },
                     onOpenFamilyMemory = {
+                        viewModel.updateCurrentScreenActivity("Mom's Photo Album")
                         navController.navigate("memory")
                     },
                     onOpenSettings = {
+                        viewModel.updateCurrentScreenActivity("Settings")
                         navController.navigate("settings")
                     }
                 )

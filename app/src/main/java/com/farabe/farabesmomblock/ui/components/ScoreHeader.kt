@@ -29,6 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -36,11 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.farabe.farabesmomblock.ui.theme.GoldAccent
 import com.farabe.farabesmomblock.ui.theme.RoseAccent
-import com.farabe.farabesmomblock.ui.theme.WarmCream
 
 /**
- * Top Chocolate Wooden Capsule Header (matching reference game layout)
- * with cute mascot medallion, main score, high score crown, garden seeds, and settings gear.
+ * Inside-Game Top Apple Liquid Glass Capsule Header with Linear Specular Stroke Lines!
+ * Features frosted glass mascot medallion, live score, high score crown, coins/seeds pill,
+ * and glass pause/settings button.
  */
 @Composable
 fun ScoreHeader(
@@ -54,22 +56,22 @@ fun ScoreHeader(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Wooden Capsule Bar
+        // Apple Frosted Glass Capsule Bar with Diagonal Linear Stroke Line
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(68.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFF4A342D), Color(0xFF281C18), Color(0xFF1B110F))
-                    )
+                .shadow(12.dp, RoundedCornerShape(26.dp))
+                .appleGlassBar(
+                    shape = RoundedCornerShape(26.dp),
+                    tintColor = Color(0xFF2E1552),
+                    strokeWidth = 1.6.dp,
+                    accentRim = Color(0xFF80D8FF)
                 )
-                .border(2.dp, Color(0xFF5C4035), RoundedCornerShape(26.dp))
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 10.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
@@ -77,16 +79,29 @@ fun ScoreHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. Cute Companion Mascot Medallion
+                // 1. Frosted Glass Companion Mascot Medallion
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .size(50.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF3B2721))
-                        .border(2.dp, Color(0xFF6B483B), CircleShape),
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.25f),
+                                    Color(0xFF3F1D6B).copy(alpha = 0.72f)
+                                )
+                            )
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            brush = Brush.linearGradient(
+                                listOf(Color.White.copy(alpha = 0.9f), GoldAccent.copy(alpha = 0.6f))
+                            ),
+                            shape = CircleShape
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    CuteMascot(modifier = Modifier.size(46.dp))
+                    CuteMascot(modifier = Modifier.size(44.dp))
                 }
 
                 Spacer(modifier = Modifier.width(10.dp))
@@ -98,16 +113,16 @@ fun ScoreHeader(
                 ) {
                     Text(
                         text = "$score",
-                        fontSize = 24.sp,
+                        fontSize = 25.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White,
                         letterSpacing = 0.5.sp
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "👑 $highScore",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = "👑 BEST: $highScore",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
                             color = GoldAccent
                         )
                     }
@@ -115,62 +130,65 @@ fun ScoreHeader(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // 3. Gold Star/Seed Badge (Mom's Garden Bloom Seeds)
+                // 3. Apple Glass Gold Coin / Seed Pill
                 Box(
                     modifier = Modifier
                         .height(38.dp)
-                        .clip(RoundedCornerShape(19.dp))
-                        .background(Color(0xFF1E1412))
-                        .border(1.dp, Color(0xFF4D332B), RoundedCornerShape(19.dp))
+                        .appleGlassBar(
+                            shape = RoundedCornerShape(19.dp),
+                            tintColor = Color(0xFF230D3E),
+                            strokeWidth = 1.3.dp,
+                            accentRim = GoldAccent
+                        )
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(22.dp)
                                 .clip(CircleShape)
-                                .background(GoldAccent),
+                                .background(GoldAccent)
+                                .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Star,
                                 contentDescription = null,
-                                tint = Color(0xFF7A4E00),
-                                modifier = Modifier.size(16.dp)
+                                tint = Color(0xFF6B3E00),
+                                modifier = Modifier.size(15.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "$seedsCount",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = GoldAccent
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                // 4. Settings Gear Icon Button
+                // 4. Apple Glass Settings / Pause Button with Linear Stroke
                 Box(
                     modifier = Modifier
                         .size(42.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color(0xFFD39869), Color(0xFFB57442))
-                            )
+                        .appleGlassBar(
+                            shape = RoundedCornerShape(14.dp),
+                            tintColor = Color(0xFF4A217A),
+                            strokeWidth = 1.4.dp,
+                            accentRim = Color.White
                         )
-                        .border(1.5.dp, Color(0xFFE5B58E), RoundedCornerShape(14.dp))
                         .clickable { onPauseClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
+                        contentDescription = "Pause & Settings",
                         tint = Color.White,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(21.dp)
                     )
                 }
             }
@@ -185,13 +203,12 @@ fun ScoreHeader(
             Box(
                 modifier = Modifier
                     .padding(top = 6.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(Color(0xFFFF3D00), RoseAccent, Color(0xFFFF9100))
-                        )
+                    .appleGlassBar(
+                        shape = RoundedCornerShape(18.dp),
+                        tintColor = RoseAccent,
+                        strokeWidth = 1.5.dp,
+                        accentRim = GoldAccent
                     )
-                    .border(1.dp, GoldAccent, RoundedCornerShape(18.dp))
                     .padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
                 Text(

@@ -33,6 +33,8 @@ data class UserSettings(
     val claimedTaskIdsCsv: String = "",
     val farabeHelperLevel: Int = 1,
     val kittenHelperLevel: Int = 1,
+    val totalPlayTimeSeconds: Int = 0,
+    val playerId: String = "",
     val lastSeenConfigVersion: Int = 1,
     val lastClaimedGiftId: String = "",
     val backendUrl: String = "http://10.0.2.2:8787/api/config",
@@ -71,6 +73,8 @@ class PreferencesManager(private val context: Context) {
         val CLAIMED_TASKS_CSV = stringPreferencesKey("claimed_task_ids_csv")
         val FARABE_HELPER_LVL = intPreferencesKey("farabe_helper_level")
         val KITTEN_HELPER_LVL = intPreferencesKey("kitten_helper_level")
+        val TOTAL_PLAY_TIME_SEC = intPreferencesKey("total_play_time_sec")
+        val PLAYER_ID = stringPreferencesKey("telemetry_player_id")
         val LAST_CONFIG_VERSION = intPreferencesKey("last_config_version")
         val LAST_CLAIMED_GIFT_ID = stringPreferencesKey("last_claimed_gift_id")
         val BACKEND_URL = stringPreferencesKey("backend_url")
@@ -97,6 +101,8 @@ class PreferencesManager(private val context: Context) {
             claimedTaskIdsCsv = pref[Keys.CLAIMED_TASKS_CSV] ?: "",
             farabeHelperLevel = pref[Keys.FARABE_HELPER_LVL] ?: 1,
             kittenHelperLevel = pref[Keys.KITTEN_HELPER_LVL] ?: 1,
+            totalPlayTimeSeconds = pref[Keys.TOTAL_PLAY_TIME_SEC] ?: 0,
+            playerId = pref[Keys.PLAYER_ID] ?: "",
             lastSeenConfigVersion = pref[Keys.LAST_CONFIG_VERSION] ?: 1,
             lastClaimedGiftId = pref[Keys.LAST_CLAIMED_GIFT_ID] ?: "",
             backendUrl = pref[Keys.BACKEND_URL] ?: "http://10.0.2.2:8787/api/config",
@@ -233,6 +239,17 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun markGiftClaimed(giftId: String) {
         context.dataStore.edit { it[Keys.LAST_CLAIMED_GIFT_ID] = giftId }
+    }
+
+    suspend fun recordActivePlayTime(deltaSeconds: Int, fallbackPlayerId: String) {
+        context.dataStore.edit { pref ->
+            if ((pref[Keys.PLAYER_ID] ?: "").isBlank()) {
+                pref[Keys.PLAYER_ID] = fallbackPlayerId
+            }
+            if (deltaSeconds > 0) {
+                pref[Keys.TOTAL_PLAY_TIME_SEC] = (pref[Keys.TOTAL_PLAY_TIME_SEC] ?: 0) + deltaSeconds
+            }
+        }
     }
 
     suspend fun resetAllSettings() {
