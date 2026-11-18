@@ -339,7 +339,7 @@ fun SettingsScreen(
             var savedFeedback by remember { mutableStateOf<String?>(null) }
 
             Text(
-                text = "Local PC Studio URL (Emulator: http://10.0.2.2:8787/api/config)",
+                text = "Live 24/7 Cloud Studio URL (Works anywhere in Bangladesh & Cyprus)",
                 fontSize = 11.sp,
                 color = WarmCream.copy(alpha = 0.72f)
             )
@@ -355,18 +355,18 @@ fun SettingsScreen(
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
+                    onClick = { backendInput = com.farabe.farabesmomblock.data.datastore.UserSettings.DEFAULT_LIVE_BACKEND_URL },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0098A3)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("☁️ Live Cloud", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Button(
                     onClick = { backendInput = "http://10.0.2.2:8787/api/config" },
                     colors = ButtonDefaults.buttonColors(containerColor = SoftCardBg),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Emulator Default", color = WarmCream, fontSize = 11.sp)
-                }
-                Button(
-                    onClick = { backendInput = "http://192.168.82.24:8787/api/config" },
-                    colors = ButtonDefaults.buttonColors(containerColor = SoftCardBg),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Home Wi-Fi IP", color = WarmCream, fontSize = 11.sp)
+                    Text("Local Emulator", color = WarmCream, fontSize = 11.sp)
                 }
             }
 

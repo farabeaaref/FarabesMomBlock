@@ -1,8 +1,9 @@
 {
   "configVersion": 31,
-  "appVersionCode": 2,
-  "appVersionName": "1.1.0",
+  "appVersionCode": 4,
+  "appVersionName": "1.2.1",
   "appDownloadUrl": "",
+  "liveBackendUrl": "https://live-game-studio-production.up.railway.app/api/config",
   "githubRawBaseUrl": "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync",
   "voice": {
     "winVoiceUrl": "",

@@ -83,6 +83,7 @@ data class RemoteGameConfig(
     val appVersionCode: Int = 1,
     val appVersionName: String = "1.0.0",
     val appDownloadUrl: String = "",
+    val liveBackendUrl: String = "",
     val theme: RemoteTheme = RemoteTheme(),
     val background: RemoteBackground = RemoteBackground(),
     val images: RemoteImages = RemoteImages(),
@@ -139,6 +140,7 @@ data class RemoteGameConfig(
                 appVersionCode = root.optInt("appVersionCode", 1),
                 appVersionName = root.optString("appVersionName", "1.0.0"),
                 appDownloadUrl = root.optString("appDownloadUrl", ""),
+                liveBackendUrl = root.optString("liveBackendUrl", ""),
                 theme = RemoteTheme(
                     primaryColorHex = themeObj?.optString("primaryColorHex", "#2B144A") ?: "#2B144A",
                     surfaceColorHex = themeObj?.optString("surfaceColorHex", "#3B1D63") ?: "#3B1D63",

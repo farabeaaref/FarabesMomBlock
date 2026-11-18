@@ -40,9 +40,13 @@ data class UserSettings(
     val lastExecutedCommandId: String = "",
     val lastSeenConfigVersion: Int = 1,
     val lastClaimedGiftId: String = "",
-    val backendUrl: String = "http://10.0.2.2:8787/api/config",
-    val cloudUrl: String = "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync/config.json"
+    val backendUrl: String = DEFAULT_LIVE_BACKEND_URL,
+    val cloudUrl: String = DEFAULT_CLOUD_CONFIG_URL
 ) {
+    companion object {
+        const val DEFAULT_LIVE_BACKEND_URL = "https://live-game-studio-production.up.railway.app/api/config"
+        const val DEFAULT_CLOUD_CONFIG_URL = "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync/config.json"
+    }
     val completedLevels: Set<Int>
         get() = completedLevelsCsv.split(",")
             .mapNotNull { it.trim().toIntOrNull() }
@@ -114,8 +118,10 @@ class PreferencesManager(private val context: Context) {
             lastExecutedCommandId = pref[Keys.LAST_EXECUTED_CMD_ID] ?: "",
             lastSeenConfigVersion = pref[Keys.LAST_CONFIG_VERSION] ?: 1,
             lastClaimedGiftId = pref[Keys.LAST_CLAIMED_GIFT_ID] ?: "",
-            backendUrl = pref[Keys.BACKEND_URL] ?: "http://10.0.2.2:8787/api/config",
-            cloudUrl = pref[Keys.CLOUD_URL] ?: "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/cloud-sync/config.json"
+            backendUrl = pref[Keys.BACKEND_URL]?.takeIf {
+                it.isNotBlank() && !it.contains("10.0.2.2") && !it.contains("localhost") && !it.contains("127.0.0.1")
+            } ?: UserSettings.DEFAULT_LIVE_BACKEND_URL,
+            cloudUrl = pref[Keys.CLOUD_URL]?.takeIf { it.isNotBlank() } ?: UserSettings.DEFAULT_CLOUD_CONFIG_URL
         )
     }
 

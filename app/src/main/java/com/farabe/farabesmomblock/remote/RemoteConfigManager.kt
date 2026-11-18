@@ -86,6 +86,7 @@ class RemoteConfigManager(
         val onEmulator = isLikelyEmulator()
         val candidateUrls = listOfNotNull(
             settings.backendUrl.takeIf { it.isNotBlank() && (onEmulator || !it.contains("10.0.2.2")) },
+            com.farabe.farabesmomblock.data.datastore.UserSettings.DEFAULT_LIVE_BACKEND_URL,
             settings.cloudUrl.takeIf { it.isNotBlank() }
         ).distinct()
 
@@ -93,8 +94,9 @@ class RemoteConfigManager(
             try {
                 val isLocal = endpoint.contains("10.0.2.2") || endpoint.contains("192.168.")
                 val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-                    connectTimeout = if (isLocal) 900 else 5000
-                    readTimeout = if (isLocal) 2500 else 6000
+                    connectTimeout = if (isLocal) 900 else 7000
+                    readTimeout = if (isLocal) 2500 else 10000
+                    instanceFollowRedirects = true
                     requestMethod = "GET"
                     setRequestProperty("Accept", "application/json")
                 }
@@ -108,6 +110,13 @@ class RemoteConfigManager(
 
                 val remoteConfig = RemoteGameConfig.fromJson(jsonStr)
                 cachedConfigFile.writeText(jsonStr)
+
+                // Auto-discover and persist updated public backend URL if pushed via cloud-sync
+                if (remoteConfig.liveBackendUrl.startsWith("https://") &&
+                    remoteConfig.liveBackendUrl != settings.backendUrl
+                ) {
+                    preferencesManager.updateBackendUrl(remoteConfig.liveBackendUrl)
+                }
 
                 val props = Properties().apply {
                     if (urlIndexFile.exists()) urlIndexFile.inputStream().use { load(it) }
@@ -218,15 +227,20 @@ class RemoteConfigManager(
     suspend fun sendTelemetryHeartbeat(payloadJson: String): String? = withContext(Dispatchers.IO) {
         try {
             val settings = preferencesManager.settingsFlow.first()
-            val configUrl = settings.backendUrl.trim()
-            if (configUrl.isBlank()) return@withContext null
+            val rawUrl = settings.backendUrl.trim()
+            val configUrl = if (rawUrl.isBlank() || rawUrl.contains("10.0.2.2") || rawUrl.contains("localhost")) {
+                com.farabe.farabesmomblock.data.datastore.UserSettings.DEFAULT_LIVE_BACKEND_URL
+            } else {
+                rawUrl
+            }
             val baseOrigin = configUrl.substringBefore("/api/").trimEnd('/')
             if (baseOrigin.isBlank()) return@withContext null
 
             val heartbeatUrl = "$baseOrigin/api/telemetry/heartbeat"
             val conn = (URL(heartbeatUrl).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 1500
-                readTimeout = 2000
+                connectTimeout = 5000
+                readTimeout = 5000
+                instanceFollowRedirects = true
                 requestMethod = "POST"
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
