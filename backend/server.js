@@ -7,14 +7,25 @@ const { execSync } = require('child_process');
 const PORT = process.env.PORT || 8787;
 const ROOT_DIR = __dirname;
 const PROJECT_DIR = path.resolve(ROOT_DIR, '..');
-const CONFIG_PATH = path.join(ROOT_DIR, 'config.json');
-const PLAYERS_PATH = path.join(ROOT_DIR, 'players.json');
-const UPLOADS_DIR = path.join(ROOT_DIR, 'uploads');
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : ROOT_DIR;
+const SEED_CONFIG_PATH = path.join(ROOT_DIR, 'config.json');
+const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
+const PLAYERS_PATH = path.join(DATA_DIR, 'players.json');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
 const CLOUD_SYNC_DIR = path.join(PROJECT_DIR, 'cloud-sync');
 
+fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+
+// Seed persistent volume with initial config on first Railway boot
+if (!fs.existsSync(CONFIG_PATH) && fs.existsSync(SEED_CONFIG_PATH)) {
+  fs.copyFileSync(SEED_CONFIG_PATH, CONFIG_PATH);
+}
+if (!fs.existsSync(CONFIG_PATH)) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify({ configVersion: 1, theme: {}, background: {}, images: {}, music: {}, voice: {}, gifts: {} }, null, 2), 'utf8');
+}
 
 function readPlayers() {
   try {
@@ -141,34 +152,44 @@ function bumpVersion(cfg, notifyTitle, notifyBody) {
 }
 
 function exportCloudSync(cfg, autoGitPush = false) {
-  const cloudUploads = path.join(CLOUD_SYNC_DIR, 'uploads');
-  fs.mkdirSync(cloudUploads, { recursive: true });
-
-  // Copy all uploaded media to cloud-sync/uploads
-  for (const file of fs.readdirSync(UPLOADS_DIR)) {
-    fs.copyFileSync(path.join(UPLOADS_DIR, file), path.join(cloudUploads, file));
+  const isCloudContainer = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID || !fs.existsSync(CLOUD_SYNC_DIR));
+  if (isCloudContainer && !autoGitPush) {
+    return { ok: true, cloudSyncDir: DATA_DIR, message: 'Live on Railway Cloud — all family devices sync directly!' };
   }
+  try {
+    const cloudUploads = path.join(CLOUD_SYNC_DIR, 'uploads');
+    fs.mkdirSync(cloudUploads, { recursive: true });
 
-  const base = (cfg.githubRawBaseUrl || '').replace(/\/+$/, '');
-  const cloudCfg = resolveConfigUrls(cfg, base);
-  fs.writeFileSync(path.join(CLOUD_SYNC_DIR, 'config.json'), JSON.stringify(cloudCfg, null, 2), 'utf8');
-
-  let gitResult = 'Exported to cloud-sync/ folder. Ready to commit & push to GitHub.';
-  if (autoGitPush) {
-    try {
-      execSync('git status', { cwd: PROJECT_DIR, stdio: 'ignore' });
-      execSync('git add cloud-sync version.json', { cwd: PROJECT_DIR, stdio: 'pipe' });
-      const pending = execSync('git status --porcelain cloud-sync version.json', { cwd: PROJECT_DIR }).toString().trim();
-      if (pending) {
-        execSync(`git commit -m "Mom update v${cfg.configVersion}"`, { cwd: PROJECT_DIR, stdio: 'pipe' });
+    // Copy all uploaded media to cloud-sync/uploads
+    if (fs.existsSync(UPLOADS_DIR)) {
+      for (const file of fs.readdirSync(UPLOADS_DIR)) {
+        fs.copyFileSync(path.join(UPLOADS_DIR, file), path.join(cloudUploads, file));
       }
-      execSync('git push -u origin HEAD', { cwd: PROJECT_DIR, stdio: 'pipe' });
-      gitResult = 'Exported and pushed to GitHub!';
-    } catch (err) {
-      gitResult = `Exported to cloud-sync/ folder (git push skipped: ${err.message.split('\n')[0]})`;
     }
+
+    const base = (cfg.githubRawBaseUrl || '').replace(/\/+$/, '');
+    const cloudCfg = resolveConfigUrls(cfg, base);
+    fs.writeFileSync(path.join(CLOUD_SYNC_DIR, 'config.json'), JSON.stringify(cloudCfg, null, 2), 'utf8');
+
+    let gitResult = 'Exported to cloud-sync/ folder. Ready to commit & push to GitHub.';
+    if (autoGitPush) {
+      try {
+        execSync('git status', { cwd: PROJECT_DIR, stdio: 'ignore' });
+        execSync('git add cloud-sync version.json', { cwd: PROJECT_DIR, stdio: 'pipe' });
+        const pending = execSync('git status --porcelain cloud-sync version.json', { cwd: PROJECT_DIR }).toString().trim();
+        if (pending) {
+          execSync(`git commit -m "Mom update v${cfg.configVersion}"`, { cwd: PROJECT_DIR, stdio: 'pipe' });
+        }
+        execSync('git push -u origin HEAD', { cwd: PROJECT_DIR, stdio: 'pipe' });
+        gitResult = 'Exported and pushed to GitHub!';
+      } catch (err) {
+        gitResult = `Exported to cloud-sync/ folder (git push skipped: ${err.message.split('\n')[0]})`;
+      }
+    }
+    return { ok: true, cloudSyncDir: CLOUD_SYNC_DIR, message: gitResult };
+  } catch (err) {
+    return { ok: true, cloudSyncDir: DATA_DIR, message: `Saved live on server (${err.message})` };
   }
-  return { ok: true, cloudSyncDir: CLOUD_SYNC_DIR, message: gitResult };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -181,11 +202,24 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost:' + PORT}`);
+  const rawProto = String(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim().toLowerCase();
+  const proto = rawProto === 'https' ? 'https' : 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || ('localhost:' + PORT);
+  const baseUrl = `${proto}://${host}`;
+  const urlObj = new URL(req.url, baseUrl);
   const pathname = decodeURIComponent(urlObj.pathname);
-  const baseUrl = `http://${req.headers.host || 'localhost:' + PORT}`;
 
   try {
+    // 0. Cloud Healthcheck
+    if (req.method === 'GET' && pathname === '/health') {
+      return sendJson(res, 200, {
+        ok: true,
+        status: 'healthy',
+        uptimeSeconds: Math.floor(process.uptime()),
+        dataDir: DATA_DIR
+      });
+    }
+
     // 1. Admin Dashboard UI
     if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
       const html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'));
@@ -200,13 +234,17 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, rawMode ? cfg : resolveConfigUrls(cfg, baseUrl));
     }
 
-    // 3. Server Info (LAN IP, paths)
+    // 3. Server Info (Public Cloud URL, LAN IP, paths)
     if (req.method === 'GET' && pathname === '/api/info') {
+      const isCloud = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID || proto === 'https');
       return sendJson(res, 200, {
         port: PORT,
+        isCloud,
+        publicBaseUrl: baseUrl,
+        publicConfigUrl: `${baseUrl}/api/config`,
         emulatorUrl: `http://10.0.2.2:${PORT}/api/config`,
         lanUrls: getLanIps().map(ip => `http://${ip}:${PORT}/api/config`),
-        uploads: fs.readdirSync(UPLOADS_DIR)
+        uploads: fs.existsSync(UPLOADS_DIR) ? fs.readdirSync(UPLOADS_DIR) : []
       });
     }
 
@@ -461,11 +499,20 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, result);
     }
 
-    // 8. Serve Uploaded Media Files
+    // 8. Serve Uploaded Media Files (with automatic fallback to GitHub cloud-sync for seeded assets)
     if (req.method === 'GET' && pathname.startsWith('/uploads/')) {
       const fileName = path.basename(pathname.slice('/uploads/'.length));
       const fullPath = path.join(UPLOADS_DIR, fileName);
       if (!fs.existsSync(fullPath)) {
+        const cfg = readConfig();
+        const ghBase = (cfg.githubRawBaseUrl || '').replace(/\/+$/, '');
+        if (ghBase) {
+          res.writeHead(302, {
+            'Location': `${ghBase}/uploads/${encodeURIComponent(fileName)}`,
+            'Access-Control-Allow-Origin': '*'
+          });
+          return res.end();
+        }
         res.writeHead(404);
         return res.end('Not found');
       }

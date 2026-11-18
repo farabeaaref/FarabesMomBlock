@@ -1,0 +1,13 @@
+{
+  "name": "farabes-mom-block-studio",
+  "version": "1.2.1",
+  "private": true,
+  "description": "Live Game Control Studio, Family Telemetry & Remote Sync Backend for Farabe's Mom - Block",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

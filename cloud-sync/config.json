@@ -1,5 +1,5 @@
 {
-  "configVersion": 23,
+  "configVersion": 31,
   "appVersionCode": 2,
   "appVersionName": "1.1.0",
   "appDownloadUrl": "",
@@ -14,9 +14,9 @@
     "duckMusicWhileSpeaking": true
   },
   "theme": {
-    "primaryColorHex": "#2b144a",
+    "primaryColorHex": "#0098a3",
     "surfaceColorHex": "#3b1d63",
-    "borderColorHex": "#7d48c4",
+    "borderColorHex": "#16fee3",
     "accentColorHex": "#5fd63a",
     "goldAccentHex": "#ffd23f",
     "boardFrameHex": "#321852",
@@ -70,9 +70,9 @@
     ]
   },
   "notification": {
-    "notifyId": "notify_23_1794834631877",
+    "notifyId": "notify_31_1795017185140",
     "title": "Nusrat",
     "body": "জিতলে বা নতুন রেকর্ড করলে আমার কণ্ঠস্বর শুনতে পাবে!",
-    "timestamp": "2026-11-16T13:10:31.877Z"
+    "timestamp": "2026-11-18T15:53:05.140Z"
   }
 }

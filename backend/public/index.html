@@ -419,9 +419,14 @@
       currentConfig = await cfgRes.json();
       const info = await infoRes.json();
 
-      document.getElementById('serverInfo').innerHTML =
-        `<span>📱 Emulator endpoint: <code>${info.emulatorUrl}</code></span>` +
-        (info.lanUrls.length ? `<span>📶 Wi-Fi phone: <code>${info.lanUrls[0]}</code></span>` : '');
+      if (info.isCloud && info.publicConfigUrl) {
+        document.getElementById('serverInfo').innerHTML =
+          `<span>☁️ Live 24/7 Cloud Sync API (Bangladesh ↔ Cyprus): <code id="pubApiUrl">${info.publicConfigUrl}</code> <button class="mini-btn" style="background:#00e5ff;color:#110820;margin-left:6px;" onclick="navigator.clipboard.writeText('${info.publicConfigUrl}');showToast('Copied Live Backend URL!')">📋 Copy URL</button></span>`;
+      } else {
+        document.getElementById('serverInfo').innerHTML =
+          `<span>📱 Emulator endpoint: <code>${info.emulatorUrl}</code></span>` +
+          (info.lanUrls.length ? `<span>📶 Wi-Fi phone: <code>${info.lanUrls[0]}</code></span>` : '');
+      }
 
       applyConfigToForm(currentConfig);
     }
