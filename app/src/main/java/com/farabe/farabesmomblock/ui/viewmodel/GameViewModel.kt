@@ -340,6 +340,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun handleHeartbeatResponseCommands(respStr: String) {
         try {
             val obj = org.json.JSONObject(respStr)
+            val serverCfgVer = obj.optInt("configVersion", 0)
+            if (serverCfgVer > remoteConfig.value.configVersion) {
+                syncRemoteConfig(isManual = false)
+            }
             val cmd = obj.optJSONObject("pendingCommand") ?: return
             val cmdId = cmd.optString("commandId", "")
             if (cmdId.isBlank() || cmdId == _userSettings.value.lastExecutedCommandId) return
@@ -404,6 +408,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 val gift = outcome.config.activeGift
                 if (gift != null && gift.giftId.isNotBlank() && gift.giftId != _userSettings.value.lastClaimedGiftId) {
                     pendingGiftToClaim.value = gift
+                }
+                // Live OTA APK Update Detection directly from Railway Studio config
+                if (outcome.config.appVersionCode > appUpdater.getCurrentVersionCode() &&
+                    outcome.config.appDownloadUrl.isNotBlank()
+                ) {
+                    availableUpdate.value = com.farabe.farabesmomblock.updater.UpdateInfo(
+                        versionCode = outcome.config.appVersionCode,
+                        versionName = outcome.config.appVersionName,
+                        downloadUrl = outcome.config.appDownloadUrl,
+                        titleBengali = outcome.config.notification.title.ifBlank { "আম্মু, গেমের নতুন আপডেট এসেছে! 📲❤️" },
+                        descriptionBengali = outcome.config.notification.body.ifBlank { "ফারাবী গেমে নতুন ফিচার যোগ করেছে। এখনই আপডেট করে নাও!" }
+                    )
                 }
                 if (isManual || outcome.hasNewContent) {
                     lastSyncBanner.value = outcome.message

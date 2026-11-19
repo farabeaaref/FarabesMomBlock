@@ -31,7 +31,8 @@ data class UpdateInfo(
 class AppUpdater(private val context: Context) {
 
     companion object {
-        // Public raw GitHub manifest URL checked automatically for new APK builds.
+        // Live 24/7 Railway backend config URL (primary) + raw GitHub manifest URL (fallback).
+        const val RAILWAY_CONFIG_URL = "https://live-game-studio-production.up.railway.app/api/config"
         const val UPDATE_MANIFEST_URL = "https://raw.githubusercontent.com/farabeaaref/FarabesMomBlock/main/version.json"
     }
 
@@ -67,11 +68,48 @@ class AppUpdater(private val context: Context) {
      * Fails silently and returns null if offline (offline-first design).
      */
     suspend fun checkForUpdate(manifestUrl: String = UPDATE_MANIFEST_URL): UpdateInfo? = withContext(Dispatchers.IO) {
+        val currentCode = getCurrentVersionCode()
+
+        // 1. Check live 24/7 Railway Studio config first
+        try {
+            val railConn = (URL(RAILWAY_CONFIG_URL).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 5000
+                readTimeout = 5000
+                instanceFollowRedirects = true
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/json")
+            }
+            if (railConn.responseCode == HttpURLConnection.HTTP_OK) {
+                val json = JSONObject(railConn.inputStream.bufferedReader().use { it.readText() })
+                val rCode = json.optInt("appVersionCode", 0)
+                val rName = json.optString("appVersionName", "")
+                val rUrl = json.optString("appDownloadUrl", "")
+                val notifyObj = json.optJSONObject("notification")
+                val rNotes = json.optString("appReleaseNotes", "")
+                if (rCode > currentCode && rUrl.isNotBlank()) {
+                    return@withContext UpdateInfo(
+                        versionCode = rCode,
+                        versionName = rName.ifBlank { "1.$rCode" },
+                        downloadUrl = rUrl,
+                        titleBengali = notifyObj?.optString("title")?.takeIf { it.isNotBlank() }
+                            ?: "আম্মু, গেমের নতুন আপডেট এসেছে! 📲❤️",
+                        descriptionBengali = notifyObj?.optString("body")?.takeIf { it.isNotBlank() }
+                            ?: "ফারাবী তোমার জন্য নতুন ফিচার যোগ করেছে। এখনই আপডেট করে নাও!",
+                        releaseNotes = rNotes
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            // Fall through to GitHub version.json check
+        }
+
+        // 2. Fallback: Check GitHub version.json
         try {
             val url = URL(manifestUrl)
             val connection = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = 4000
-                readTimeout = 4000
+                connectTimeout = 5000
+                readTimeout = 5000
+                instanceFollowRedirects = true
                 requestMethod = "GET"
                 setRequestProperty("Accept", "application/json")
             }
@@ -92,8 +130,6 @@ class AppUpdater(private val context: Context) {
                 "ফারাবী তোমার জন্য নতুন গান ও সুন্দর ফিচার যোগ করেছে।"
             )
             val releaseNotes = json.optString("releaseNotes", "")
-
-            val currentCode = getCurrentVersionCode()
 
             if (remoteVersionCode > currentCode && downloadUrl.isNotBlank()) {
                 UpdateInfo(

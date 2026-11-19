@@ -370,28 +370,32 @@
         <button class="btn btn-green" onclick="addLetterAndNotify()">💌 Push Letter &amp; Notify Mom</button>
       </div>
 
-      <!-- 6. Cloud / GitHub Sync for Mom's Real Phone -->
+      <!-- 6. OTA APK Auto-Updater & Cloud Sync -->
       <div class="card">
-        <h2>☁️ Publish to Mom's Real Phone (GitHub)</h2>
+        <h2>📲 Push New App Update (OTA APK) to All Family Phones</h2>
         <p style="font-size:12px; color:var(--muted); margin-top:0;">
-          Every save automatically exports to <code>cloud-sync/</code>. Connect your GitHub raw URL so Mom gets updates anywhere over mobile data/Wi-Fi even when your PC is off.
+          Upload a new <code>app-release.apk</code> here whenever new game code/features are added. Every family member's phone will automatically show an in-app <strong>Update Now</strong> popup!
         </p>
-        <label>GitHub Raw Base URL (cloud-sync folder)</label>
-        <input type="text" id="githubRawBaseUrl" />
-        <label>Optional New APK Download URL (when updating app code)</label>
-        <input type="text" id="appDownloadUrl" placeholder="https://github.com/user/repo/releases/download/v1.1.0/app-release.apk" />
         <div class="color-row">
           <div>
-            <label>APK Version Code</label>
-            <input type="number" id="appVersionCode" value="1" />
+            <label>New APK Version Code (e.g. 4, 5...)</label>
+            <input type="number" id="appVersionCode" value="4" />
           </div>
           <div>
-            <label>APK Version Name</label>
-            <input type="text" id="appVersionName" value="1.0.0" />
+            <label>New APK Version Name (e.g. 1.2.1)</label>
+            <input type="text" id="appVersionName" value="1.2.1" />
           </div>
         </div>
-        <button class="btn btn-purple" onclick="exportCloud(false)">📦 Export to cloud-sync/ Folder</button>
-        <button class="btn btn-green" onclick="exportCloud(true)">☁️ Export &amp; Git Push to Mom</button>
+        <label>Upload New Signed APK File (<code>.apk</code>)</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="file" id="fileApkRelease" accept=".apk" style="flex:1;" />
+          <button class="btn btn-green" style="width:auto; margin:0; padding:10px 14px;" onclick="uploadApkRelease()">🚀 Upload APK &amp; Broadcast Update</button>
+        </div>
+        <label style="margin-top:8px;">Current Active APK Download URL</label>
+        <input type="text" id="appDownloadUrl" placeholder="https://live-game-studio-production.up.railway.app/uploads/app-release.apk" />
+        <label>GitHub Raw Base URL (Fallback cloud-sync folder)</label>
+        <input type="text" id="githubRawBaseUrl" />
+        <button class="btn btn-purple" onclick="saveFullConfig()">💾 Save Version &amp; APK URL</button>
       </div>
     </div>
   </div>
@@ -873,6 +877,31 @@
           </div>
         `;
       }).join('');
+    }
+
+    async function uploadApkRelease() {
+      const input = document.getElementById('fileApkRelease');
+      if (!input.files || !input.files[0]) {
+        alert('Please choose an .apk file first!');
+        return;
+      }
+      const file = input.files[0];
+      const vCode = Number(document.getElementById('appVersionCode').value) || 4;
+      const vName = document.getElementById('appVersionName').value || '1.2.1';
+      showToast(`Uploading ${file.name} (${Math.round(file.size / 1048576)} MB)...`);
+      const res = await fetch(`/api/upload?type=apk&name=${encodeURIComponent(file.name)}&versionCode=${vCode}&versionName=${encodeURIComponent(vName)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/vnd.android.package-archive' },
+        body: file
+      });
+      const data = await res.json();
+      if (data.ok) {
+        currentConfig = data.config;
+        document.getElementById('appDownloadUrl').value = data.fileUrl;
+        document.getElementById('appVersionCode').value = data.config.appVersionCode;
+        document.getElementById('appVersionName').value = data.config.appVersionName;
+        showToast(`📲 APK v${vName} (Build ${vCode}) Live! All family phones will prompt to update!`);
+      }
     }
 
     async function sendPlayerCmd(playerId, action, extra) {

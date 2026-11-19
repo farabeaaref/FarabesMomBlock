@@ -75,6 +75,9 @@ function resolveUrl(val, baseUrl) {
 
 function resolveConfigUrls(cfg, baseUrl) {
   const clone = JSON.parse(JSON.stringify(cfg));
+  if (clone.appDownloadUrl) {
+    clone.appDownloadUrl = resolveUrl(clone.appDownloadUrl, baseUrl);
+  }
   if (clone.background) {
     clone.background.homeBackgroundUrl = resolveUrl(clone.background.homeBackgroundUrl, baseUrl);
     clone.background.gameplayBackgroundUrl = resolveUrl(clone.background.gameplayBackgroundUrl, baseUrl);
@@ -310,7 +313,14 @@ const server = http.createServer(async (req, res) => {
       }
 
       writePlayers(players);
-      return sendJson(res, 200, { ok: true, serverTimeMs: now, pendingCommand });
+      const currentCfg = readConfig();
+      return sendJson(res, 200, {
+        ok: true,
+        serverTimeMs: now,
+        configVersion: Number(currentCfg.configVersion || 1),
+        appVersionCode: Number(currentCfg.appVersionCode || 1),
+        pendingCommand
+      });
     }
 
     // 3B-2. Queue a Live Remote-Control Command for a Specific Family Player (or ALL)
@@ -480,6 +490,21 @@ const server = http.createServer(async (req, res) => {
           cfg.voice.enableComboVoice = true;
           bumpVersion(cfg, 'আম্মু, নতুন কম্বো ভয়েস যোগ হয়েছে! 🎙️✨', 'বড় কম্বো করলে ফারাবীর কণ্ঠ শুনবে!');
         }
+      } else if (targetType === 'apk') {
+        const latestAliasPath = path.join(UPLOADS_DIR, 'FarabesMomBlock-latest.apk');
+        fs.copyFileSync(destPath, latestAliasPath);
+        const reqVersionCode = Number(urlObj.searchParams.get('versionCode'));
+        const reqVersionName = urlObj.searchParams.get('versionName') || '';
+        const reqReleaseNotes = urlObj.searchParams.get('releaseNotes') || '';
+        cfg.appVersionCode = reqVersionCode > 0 ? reqVersionCode : ((Number(cfg.appVersionCode) || 3) + 1);
+        if (reqVersionName) cfg.appVersionName = reqVersionName;
+        if (reqReleaseNotes) cfg.appReleaseNotes = reqReleaseNotes;
+        cfg.appDownloadUrl = '/uploads/FarabesMomBlock-latest.apk';
+        bumpVersion(
+          cfg,
+          `আম্মু ও পরিবার, গেমের নতুন ভার্সন v${cfg.appVersionName || cfg.appVersionCode} এসেছে! 📲❤️`,
+          'নতুন ফিচার পেতে গেমের ভেতর Update বাটনে ট্যাপ করো!'
+        );
       }
 
       writeConfig(cfg);
