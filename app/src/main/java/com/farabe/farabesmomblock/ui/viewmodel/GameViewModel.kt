@@ -294,7 +294,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             put("playerId", pid)
             put("playerName", s.momName)
             put("deviceModel", devModel)
-            put("appVersion", "1.2.1")
+            put("appVersion", "1.2.2")
             put("currentActivity", detailedActivity)
             put("screenState", currentScreenName)
             put("isInGame", isCurrentlyInGame)
@@ -515,41 +515,100 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         updateCandidateFromTouch(trayIndex, touchPos)
     }
 
-    private fun updateCandidateFromTouch(trayIndex: Int, touchPos: Offset) {
-        val coords = boardCoordinates ?: return
+    /**
+     * Ergonomic vertical touch lift (in pixels) so the entire block sits clearly
+     * above Mom's fingertip while reaching both top Row 0 and bottom Row 7 effortlessly.
+     */
+    fun computeTouchLiftPx(shape: com.farabe.farabesmomblock.engine.BlockShape, cellH: Float): Float {
+        return (cellH * 1.15f) + (shape.height * cellH * 0.45f)
+    }
+
+    private fun findBestMagneticPlacement(
+        trayIndex: Int,
+        touchPos: Offset,
+        maxRadiusCells: Float
+    ): Pair<Int, Int>? {
+        val coords = boardCoordinates ?: return null
+        val shape = engine.currentState.trayPieces.getOrNull(trayIndex) ?: return null
+        val board = engine.currentState.board
         val boardPos = coords.positionInRoot()
         val boardSize = coords.size
+        if (boardSize.width <= 0 || boardSize.height <= 0) return null
 
-        val board = engine.currentState.board
         val cellW = boardSize.width.toFloat() / board.cols
         val cellH = boardSize.height.toFloat() / board.rows
-
-        // Lift offset in pixels so Mom's finger is directly below the piece
-        val touchLiftPx = cellH * 2.2f
+        val touchLiftPx = computeTouchLiftPx(shape, cellH)
 
         val pieceCenterX = touchPos.x
         val pieceCenterY = touchPos.y - touchLiftPx
 
-        val relX = pieceCenterX - boardPos.x
-        val relY = pieceCenterY - boardPos.y
+        // Exact top-left corner of the piece in board-local pixel coordinates (no half-cell offset!)
+        val topLeftRelX = (pieceCenterX - (shape.width * cellW * 0.5f)) - boardPos.x
+        val topLeftRelY = (pieceCenterY - (shape.height * cellH * 0.5f)) - boardPos.y
 
+        // Continuous grid coordinates where (0.0, 0.0) aligns with top-left cell (0, 0)
+        val exactCol = topLeftRelX / cellW
+        val exactRow = topLeftRelY / cellH
+
+        // Ignore when the dragged piece is still far outside the board
+        if (exactRow < -1.4f || exactRow > (board.rows - shape.height + 1.4f) ||
+            exactCol < -1.4f || exactCol > (board.cols - shape.width + 1.4f)
+        ) {
+            return null
+        }
+
+        val primaryRow = exactRow.roundToInt().coerceIn(0, (board.rows - shape.height).coerceAtLeast(0))
+        val primaryCol = exactCol.roundToInt().coerceIn(0, (board.cols - shape.width).coerceAtLeast(0))
+
+        val prev = candidatePlacement
+        var bestTarget: Pair<Int, Int>? = null
+        var bestScore = Float.MAX_VALUE
+
+        for (dr in -1..1) {
+            for (dc in -1..1) {
+                val r = primaryRow + dr
+                val c = primaryCol + dc
+                if (!engine.canPlace(trayIndex, r, c)) continue
+
+                val dist = kotlin.math.hypot((r - exactRow).toDouble(), (c - exactCol).toDouble()).toFloat()
+                if (dist > maxRadiusCells) continue
+
+                // Slight hysteresis bias keeps the current snapped cell steady against finger micro-tremors
+                val hysteresisBias = if (prev != null && prev.first == r && prev.second == c) -0.11f else 0f
+                val primaryBias = if (dr == 0 && dc == 0) -0.06f else 0f
+                val effectiveScore = dist + hysteresisBias + primaryBias
+
+                if (effectiveScore < bestScore) {
+                    bestScore = effectiveScore
+                    bestTarget = Pair(r, c)
+                }
+            }
+        }
+        return bestTarget
+    }
+
+    private fun updateCandidateFromTouch(trayIndex: Int, touchPos: Offset) {
         val shape = engine.currentState.trayPieces.getOrNull(trayIndex) ?: return
+        val prevCandidate = candidatePlacement
+        val snapped = findBestMagneticPlacement(
+            trayIndex = trayIndex,
+            touchPos = touchPos,
+            maxRadiusCells = 0.85f
+        )
 
-        // Compute anchor (row, col)
-        val anchorCol = ((relX - ((shape.width - 1) * cellW * 0.5f)) / cellW).roundToInt()
-        val anchorRow = ((relY - ((shape.height - 1) * cellH * 0.5f)) / cellH).roundToInt()
-
-        if (engine.canPlace(trayIndex, anchorRow, anchorCol)) {
-            candidatePlacement = Pair(anchorRow, anchorCol)
-            candidateAnchor.value = candidatePlacement
+        if (snapped != null) {
+            if (snapped != prevCandidate) {
+                soundManager.playGridSnapTick()
+            }
+            candidatePlacement = snapped
+            candidateAnchor.value = snapped
             candidateShapePoints.value = shape.points
-            // Create ghost overlay
             val overlay = shape.points.associate { pt ->
-                Pair(anchorRow + pt.y, anchorCol + pt.x) to shape.color
+                Pair(snapped.first + pt.y, snapped.second + pt.x) to shape.color
             }
             ghostCells.value = overlay
 
-            val (rows, cols) = engine.previewGhostLines(trayIndex, anchorRow, anchorCol)
+            val (rows, cols) = engine.previewGhostLines(trayIndex, snapped.first, snapped.second)
             willClearRows.value = rows
             willClearCols.value = cols
         } else {
@@ -563,13 +622,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onDragEnd(trayIndex: Int) {
-        val candidate = candidatePlacement
+        val finalCandidate = candidatePlacement
+            ?: findBestMagneticPlacement(trayIndex, dragTouchPosition.value, maxRadiusCells = 0.98f)
         activeDraggingIndex.value = null
         candidateAnchor.value = null
         candidateShapePoints.value = null
 
-        if (candidate != null && engine.canPlace(trayIndex, candidate.first, candidate.second)) {
-            executePlacement(trayIndex, candidate.first, candidate.second)
+        if (finalCandidate != null && engine.canPlace(trayIndex, finalCandidate.first, finalCandidate.second)) {
+            executePlacement(trayIndex, finalCandidate.first, finalCandidate.second)
         } else {
             soundManager.playInvalidMove()
             ghostCells.value = emptyMap()
@@ -610,9 +670,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val selectedIdx = selectedPieceIndex.value ?: return
         val shape = engine.currentState.trayPieces.getOrNull(selectedIdx) ?: return
 
-        // Attempt anchor placement at (targetRow, targetCol)
-        if (engine.canPlace(selectedIdx, targetRow, targetCol)) {
-            executePlacement(selectedIdx, targetRow, targetCol)
+        val centeredRow = targetRow - (shape.height / 2)
+        val centeredCol = targetCol - (shape.width / 2)
+
+        val candidates = listOf(
+            Pair(centeredRow, centeredCol),
+            Pair(targetRow, targetCol),
+            Pair(centeredRow - 1, centeredCol),
+            Pair(centeredRow + 1, centeredCol),
+            Pair(centeredRow, centeredCol - 1),
+            Pair(centeredRow, centeredCol + 1)
+        )
+        val validTarget = candidates.firstOrNull { (r, c) -> engine.canPlace(selectedIdx, r, c) }
+
+        if (validTarget != null) {
+            executePlacement(selectedIdx, validTarget.first, validTarget.second)
             selectedPieceIndex.value = null
         } else {
             soundManager.playInvalidMove()

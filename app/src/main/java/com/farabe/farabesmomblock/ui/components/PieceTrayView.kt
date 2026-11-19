@@ -143,6 +143,28 @@ private fun TraySlot(
                 shape = RoundedCornerShape(14.dp)
             )
             .onGloballyPositioned { slotCoords = it }
+            .pointerInput(index, shape?.id) {
+                if (shape != null) {
+                    detectDragGestures(
+                        onDragStart = { startOffset ->
+                            val rootOrigin = slotCoords?.positionInRoot() ?: Offset.Zero
+                            currentTouchInRoot = rootOrigin + startOffset
+                            onDragStart(index, currentTouchInRoot)
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            currentTouchInRoot += dragAmount
+                            onDrag(index, currentTouchInRoot)
+                        },
+                        onDragEnd = {
+                            onDragEnd(index)
+                        },
+                        onDragCancel = {
+                            onDragCancel(index)
+                        }
+                    )
+                }
+            }
             .clickable(enabled = shape != null) { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -157,27 +179,7 @@ private fun TraySlot(
             Box(
                 modifier = Modifier
                     .scale(pulseScale.value)
-                    .alpha(if (isBeingDragged) 0.20f else 1.0f)
-                    .pointerInput(shape.id) {
-                        detectDragGestures(
-                            onDragStart = { startOffset ->
-                                val rootOrigin = slotCoords?.positionInRoot() ?: Offset.Zero
-                                currentTouchInRoot = rootOrigin + startOffset
-                                onDragStart(index, currentTouchInRoot)
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                currentTouchInRoot += dragAmount
-                                onDrag(index, currentTouchInRoot)
-                            },
-                            onDragEnd = {
-                                onDragEnd(index)
-                            },
-                            onDragCancel = {
-                                onDragCancel(index)
-                            }
-                        )
-                    },
+                    .alpha(if (isBeingDragged) 0.15f else 1.0f),
                 contentAlignment = Alignment.Center
             ) {
                 PieceShapePreview(

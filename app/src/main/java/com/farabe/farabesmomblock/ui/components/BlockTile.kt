@@ -95,26 +95,36 @@ fun BlockTile(
         val motifColor = Color(color.motifAccentHex)
 
         if (isGhost) {
-            // Sleek Holographic Translucent Crystal Footprint (never clutters dragged piece)
+            // High-Clarity 3D Translucent Jewel Footprint (Mom clearly sees exact landing cells)
             Box(
                 modifier = modifier
-                    .padding(2.2.dp)
+                    .padding(1.8.dp)
                     .clip(RoundedCornerShape(cornerRadius))
                     .background(
-                        Brush.radialGradient(
+                        Brush.linearGradient(
                             colors = listOf(
-                                highlightColor.copy(alpha = 0.38f),
-                                baseColor.copy(alpha = 0.22f)
+                                highlightColor.copy(alpha = 0.62f),
+                                baseColor.copy(alpha = 0.48f),
+                                shadowColor.copy(alpha = 0.42f)
                             )
                         )
                     )
                     .border(
-                        width = 1.6.dp,
+                        width = 2.0.dp,
                         brush = Brush.verticalGradient(
-                            listOf(Color.White.copy(alpha = 0.9f), highlightColor.copy(alpha = 0.75f))
+                            listOf(Color.White, highlightColor.copy(alpha = 0.92f))
                         ),
                         shape = RoundedCornerShape(cornerRadius)
                     )
+                    .drawBehind {
+                        val inset = (size.minDimension * 0.18f).coerceAtLeast(3f)
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.24f),
+                            topLeft = Offset(inset, inset),
+                            size = Size(size.width - inset * 2f, (size.height - inset * 2f) * 0.45f),
+                            cornerRadius = CornerRadius(4f, 4f)
+                        )
+                    }
             )
         } else {
             Box(

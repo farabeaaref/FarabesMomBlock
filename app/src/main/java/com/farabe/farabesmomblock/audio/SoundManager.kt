@@ -235,6 +235,15 @@ class SoundManager(private val context: Context) {
 
     // --- Sound Effects ---
 
+    private var lastSnapTickMs: Long = 0L
+
+    fun playGridSnapTick() {
+        val now = System.currentTimeMillis()
+        if (now - lastSnapTickMs < 55L) return
+        lastSnapTickMs = now
+        vibrate(7, 38)
+    }
+
     fun playPiecePickup() {
         vibrate(15, 60)
         playChime(listOf(659.25f), listOf(60), volumeFactor = 0.5f)

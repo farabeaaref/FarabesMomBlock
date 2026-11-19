@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -101,6 +103,7 @@ fun GameScreen(
     }
 
     var isPaused by remember { mutableStateOf(false) }
+    var gameBoxRootOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     val snackbarHostState = remember { SnackbarHostState() }
     val density = LocalDensity.current
     val boardBumpY = remember { Animatable(0f) }
@@ -142,6 +145,9 @@ fun GameScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .onGloballyPositioned { coords ->
+                    gameBoxRootOffset = coords.positionInRoot()
+                }
         ) {
             // 1. Dynamic 3D/Custom Gameplay Background or Quilted Warm Wood
             if (cachedGameBg != null) {
@@ -366,15 +372,32 @@ fun GameScreen(
                 val boardCoords = viewModel.boardCoordinates
                 if (draggingShape != null && boardCoords != null) {
                     val boardWidthPx = boardCoords.size.width.toFloat()
+                    val boardHeightPx = boardCoords.size.height.toFloat()
                     val boardCellPx = boardWidthPx / 8f
+                    val boardCellHPx = boardHeightPx / 8f
                     val boardCellDp = with(density) { boardCellPx.toDp() }
-                    val touchLiftPx = boardCellPx * 2.2f
+                    val touchLiftPx = viewModel.computeTouchLiftPx(draggingShape, boardCellHPx)
 
                     val shapeWidthPx = draggingShape.width * boardCellPx
-                    val shapeHeightPx = draggingShape.height * boardCellPx
+                    val shapeHeightPx = draggingShape.height * boardCellHPx
 
-                    val overlayX = dragTouchPosition.x - (shapeWidthPx * 0.5f)
-                    val overlayY = dragTouchPosition.y - touchLiftPx - (shapeHeightPx * 0.5f)
+                    val rawOverlayX = (dragTouchPosition.x - gameBoxRootOffset.x) - (shapeWidthPx * 0.5f)
+                    val rawOverlayY = (dragTouchPosition.y - gameBoxRootOffset.y) - touchLiftPx - (shapeHeightPx * 0.5f)
+
+                    val anchor = candidateAnchor
+                    val boardRootPos = boardCoords.positionInRoot()
+                    val overlayX = if (anchor != null) {
+                        val snappedX = (boardRootPos.x - gameBoxRootOffset.x) + (anchor.second * boardCellPx)
+                        (rawOverlayX * 0.72f) + (snappedX * 0.28f)
+                    } else {
+                        rawOverlayX
+                    }
+                    val overlayY = if (anchor != null) {
+                        val snappedY = (boardRootPos.y - gameBoxRootOffset.y) + (anchor.first * boardCellHPx)
+                        (rawOverlayY * 0.72f) + (snappedY * 0.28f)
+                    } else {
+                        rawOverlayY
+                    }
 
                     Box(
                         modifier = Modifier

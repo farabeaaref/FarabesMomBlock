@@ -81,72 +81,74 @@ fun BoardView(
                 )
             )
             .border(2.5.dp, Color(0xFF5C4035), RoundedCornerShape(22.dp))
-            .onGloballyPositioned { onBoardPositioned(it) }
-            .drawBehind {
-                val cellW = size.width / board.cols
-                val cellH = size.height / board.rows
+            .padding(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onGloballyPositioned { onBoardPositioned(it) }
+                .drawBehind {
+                    val cellW = size.width / board.cols
+                    val cellH = size.height / board.rows
 
-                // 1. Highlight rows that will be cleared with golden glow
-                for (r in willClearRows) {
-                    drawRoundRect(
-                        color = GoldAccent.copy(alpha = shimmerAlpha * 0.7f),
-                        topLeft = Offset(0f, r * cellH),
-                        size = Size(size.width, cellH),
-                        cornerRadius = CornerRadius(10f, 10f)
-                    )
-                }
+                    // 1. Highlight rows that will be cleared with golden glow
+                    for (r in willClearRows) {
+                        drawRoundRect(
+                            color = GoldAccent.copy(alpha = shimmerAlpha * 0.7f),
+                            topLeft = Offset(0f, r * cellH),
+                            size = Size(size.width, cellH),
+                            cornerRadius = CornerRadius(10f, 10f)
+                        )
+                    }
 
-                // 2. Highlight cols that will be cleared with golden glow
-                for (c in willClearCols) {
-                    drawRoundRect(
-                        color = GoldAccent.copy(alpha = shimmerAlpha * 0.7f),
-                        topLeft = Offset(c * cellW, 0f),
-                        size = Size(cellW, size.height),
-                        cornerRadius = CornerRadius(10f, 10f)
-                    )
-                }
+                    // 2. Highlight cols that will be cleared with golden glow
+                    for (c in willClearCols) {
+                        drawRoundRect(
+                            color = GoldAccent.copy(alpha = shimmerAlpha * 0.7f),
+                            topLeft = Offset(c * cellW, 0f),
+                            size = Size(cellW, size.height),
+                            cornerRadius = CornerRadius(10f, 10f)
+                        )
+                    }
 
-                // 3. 3D Holographic Golden-Flame Landing Target (exact contour, no boxy clutter)
-                if (candidateAnchor != null && candidateShapePoints != null && ghostCells.isNotEmpty()) {
-                    for (pt in candidateShapePoints) {
-                        val cr = candidateAnchor.first + pt.y
-                        val cc = candidateAnchor.second + pt.x
-                        if (board.isWithinBounds(cr, cc)) {
-                            val rx = cc * cellW
-                            val ry = cr * cellH
+                    // 3. 3D Holographic Golden-Flame Landing Target (exact inner grid coordinates)
+                    if (candidateAnchor != null && candidateShapePoints != null && ghostCells.isNotEmpty()) {
+                        for (pt in candidateShapePoints) {
+                            val cr = candidateAnchor.first + pt.y
+                            val cc = candidateAnchor.second + pt.x
+                            if (board.isWithinBounds(cr, cc)) {
+                                val rx = cc * cellW
+                                val ry = cr * cellH
 
-                            // Soft outer golden plasma bloom
-                            drawRoundRect(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        GoldAccent.copy(alpha = 0.45f * shimmerAlpha),
-                                        NeonLandingGlow.copy(alpha = 0.20f * shimmerAlpha),
-                                        Color.Transparent
+                                drawRoundRect(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            GoldAccent.copy(alpha = 0.50f * shimmerAlpha),
+                                            NeonLandingGlow.copy(alpha = 0.24f * shimmerAlpha),
+                                            Color.Transparent
+                                        ),
+                                        center = Offset(rx + cellW * 0.5f, ry + cellH * 0.5f),
+                                        radius = cellW * 0.78f
                                     ),
-                                    center = Offset(rx + cellW * 0.5f, ry + cellH * 0.5f),
-                                    radius = cellW * 0.75f
-                                ),
-                                topLeft = Offset(rx - 4f, ry - 4f),
-                                size = Size(cellW + 8f, cellH + 8f),
-                                cornerRadius = CornerRadius(14f, 14f)
-                            )
-                            // Crisp illuminated crystal landing rim
-                            drawRoundRect(
-                                brush = Brush.verticalGradient(
-                                    listOf(Color(0xFFFFF59D), GoldAccent, NeonLandingOrange)
-                                ),
-                                topLeft = Offset(rx + 2.5f, ry + 2.5f),
-                                size = Size(cellW - 5f, cellH - 5f),
-                                cornerRadius = CornerRadius(10f, 10f),
-                                style = Stroke(width = 2.8f)
-                            )
+                                    topLeft = Offset(rx - 4f, ry - 4f),
+                                    size = Size(cellW + 8f, cellH + 8f),
+                                    cornerRadius = CornerRadius(14f, 14f)
+                                )
+                                drawRoundRect(
+                                    brush = Brush.verticalGradient(
+                                        listOf(Color(0xFFFFF59D), GoldAccent, NeonLandingOrange)
+                                    ),
+                                    topLeft = Offset(rx + 2f, ry + 2f),
+                                    size = Size(cellW - 4f, cellH - 4f),
+                                    cornerRadius = CornerRadius(10f, 10f),
+                                    style = Stroke(width = 3.0f)
+                                )
+                            }
                         }
                     }
                 }
-            }
-            .padding(6.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
             for (r in 0 until board.rows) {
                 Row(
                     modifier = Modifier
@@ -176,6 +178,7 @@ fun BoardView(
                     }
                 }
             }
+        }
         }
     }
 }
