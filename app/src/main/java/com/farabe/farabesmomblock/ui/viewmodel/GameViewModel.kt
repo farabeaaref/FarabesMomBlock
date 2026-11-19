@@ -294,7 +294,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             put("playerId", pid)
             put("playerName", s.momName)
             put("deviceModel", devModel)
-            put("appVersion", "1.2.2")
+            put("appVersion", "1.2.3")
             put("currentActivity", detailedActivity)
             put("screenState", currentScreenName)
             put("isInGame", isCurrentlyInGame)
@@ -751,13 +751,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             val stage = getLevelStage()
+            // STRICT LEVEL RULE: Player must achieve BOTH targetScore AND targetLines to complete the stage!
             if (stage != null && !isLevelCompleted.value &&
-                (engine.currentState.score >= stage.targetScore || engine.currentState.linesClearedTotal >= stage.targetLines)
+                engine.currentState.score >= stage.targetScore &&
+                engine.currentState.linesClearedTotal >= stage.targetLines
             ) {
                 isLevelCompleted.value = true
                 soundManager.playUnlockReward()
                 playWinVoice()
-                logPlayerEvent("🏆 WON Level ${stage.levelNumber}: ${stage.title}! (Score: ${engine.currentState.score}, Unlocked Lv.${(stage.levelNumber + 1).coerceAtMost(12)})")
+                logPlayerEvent("🏆 WON Level ${stage.levelNumber}: ${stage.title}! (Score: ${engine.currentState.score}/${stage.targetScore}, Lines: ${engine.currentState.linesClearedTotal}/${stage.targetLines}, Unlocked Lv.${(stage.levelNumber + 1).coerceAtMost(12)})")
                 showBanner(
                     "LEVEL ${stage.levelNumber} WON! 🎉🌟",
                     "অভিনন্দন আম্মু! Level ${(stage.levelNumber + 1).coerceAtMost(12)} Unlocked! (+${stage.rewardCoins} 🪙)"
@@ -787,12 +789,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Check game over -> trigger Farabe's Win/Lose Voice Note cleanly & update life/coins
-            if (result.isGameOver) {
+            // Check game over -> strictly require level completion in LEVEL mode!
+            if (result.isGameOver && !isLevelCompleted.value) {
                 soundManager.playGameOver()
-                val isNewBest = engine.currentState.score >= engine.currentState.highScore && engine.currentState.score > 0
-                logPlayerEvent("💔 Game Over in ${activeGameMode.value} (Final Score: ${engine.currentState.score}, Played ${currentRoundSeconds}s)")
-                if (isNewBest || isLevelCompleted.value) {
+                val isClassicNewBest = stage == null && engine.currentState.score >= engine.currentState.highScore && engine.currentState.score > 0
+                if (stage != null) {
+                    logPlayerEvent("💔 Failed Level ${stage.levelNumber}: ${stage.title} (Score: ${engine.currentState.score}/${stage.targetScore}, Lines: ${engine.currentState.linesClearedTotal}/${stage.targetLines})")
+                } else {
+                    logPlayerEvent("💔 Game Over in ${activeGameMode.value} (Final Score: ${engine.currentState.score}, Played ${currentRoundSeconds}s)")
+                }
+                if (isClassicNewBest) {
                     playWinVoice()
                     viewModelScope.launch {
                         preferencesManager.addCoinsAndHearts(coinsDelta = 50, heartsDelta = 1, gemsDelta = 1)
@@ -802,7 +808,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     playLoseVoice()
                     viewModelScope.launch {
                         val heartDelta = if (activeGameMode.value == "RELAX") 0 else -1
-                        preferencesManager.addCoinsAndHearts(coinsDelta = 20, heartsDelta = heartDelta)
+                        preferencesManager.addCoinsAndHearts(coinsDelta = 15, heartsDelta = heartDelta)
                         pushTelemetryNow()
                     }
                 }
@@ -850,28 +856,39 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startNewGame(mode: String = "CLASSIC") {
+        // STRICT LEVEL PROGRESSION LOCK: Prevent skipping past highestUnlockedLevel
+        val requestedStage = getLevelStage(mode)
+        val maxUnlocked = _userSettings.value.highestUnlockedLevel.coerceIn(1, HANDCRAFTED_LEVELS.size)
+        val enforcedMode = if (requestedStage != null && requestedStage.levelNumber > maxUnlocked &&
+            !_userSettings.value.completedLevels.contains(requestedStage.levelNumber)
+        ) {
+            "LEVEL_$maxUnlocked"
+        } else {
+            mode
+        }
+
         soundManager.stopVoice()
         isPlayingVoice.value = false
         isLevelCompleted.value = false
         isCurrentlyInGame = true
         isCurrentlyPaused = false
         currentRoundSeconds = 0
-        activeGameMode.value = mode
+        activeGameMode.value = enforcedMode
         selectedPieceIndex.value = null
         activeDraggingIndex.value = null
         ghostCells.value = emptyMap()
         willClearRows.value = emptySet()
         willClearCols.value = emptySet()
 
-        val stg = getLevelStage(mode)
-        val modeLabel = if (stg != null) "Level ${stg.levelNumber}: ${stg.title}" else mode
+        val stg = getLevelStage(enforcedMode)
+        val modeLabel = if (stg != null) "Level ${stg.levelNumber}: ${stg.title}" else enforcedMode
         logPlayerEvent("🎮 Entered Game -> $modeLabel")
 
         engine.startNewGame(initialHighScore = _userSettings.value.allTimeHighScore)
         _gameState.value = engine.currentState
         viewModelScope.launch {
             repository.clearActiveSave()
-            repository.saveActiveGame(engine.currentState, mode)
+            repository.saveActiveGame(engine.currentState, enforcedMode)
             preferencesManager.incrementGamesPlayed()
             currentScreenName = "Playing $modeLabel"
             pushTelemetryNow()
@@ -897,12 +914,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startNextChallengeLevel() {
         val currentStage = getLevelStage()
-        val nextNum = if (currentStage != null) {
+        val hasCompletedCurrent = currentStage != null &&
+            (isLevelCompleted.value || _userSettings.value.completedLevels.contains(currentStage.levelNumber))
+        val targetLevel = if (currentStage != null && hasCompletedCurrent) {
             (currentStage.levelNumber + 1).coerceAtMost(HANDCRAFTED_LEVELS.size)
+        } else if (currentStage != null) {
+            // Strictly stay on current uncompleted level!
+            currentStage.levelNumber
         } else {
             _userSettings.value.highestUnlockedLevel.coerceAtMost(HANDCRAFTED_LEVELS.size)
         }
-        startNewGame("LEVEL_$nextNum")
+        startNewGame("LEVEL_$targetLevel")
     }
 
     fun refillMomHeartsFree() {

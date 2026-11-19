@@ -62,18 +62,18 @@ data class LevelStage(
 )
 
 val HANDCRAFTED_LEVELS = listOf(
-    LevelStage(1, "Morning Blossom", "ভোরের ফুল", "Clear 3 lines or score 250 pts to bloom the first flower.", 250, 3, 100, "🌸"),
-    LevelStage(2, "Butterfly Meadow", "প্রজাপতির মেলা", "Clear 5 lines or score 500 pts with graceful moves.", 500, 5, 120, "🦋"),
-    LevelStage(3, "Shapla Waterlily Pond", "শাপলা বিল", "Clear 7 lines or reach 800 pts in the waterlily pond.", 800, 7, 150, "🌺"),
-    LevelStage(4, "Sunny Mango Orchard", "আমের বাগান", "Reach 1,100 pts or clear 9 lines to harvest sweet mangoes.", 1100, 9, 180, "🥭"),
-    LevelStage(5, "Nakshi Kantha Weave", "নকশী কাঁথা", "Score 1,400 pts or clear 12 lines to stitch golden patterns.", 1400, 12, 220, "🧵"),
-    LevelStage(6, "Mom's Rose Garden", "মায়ের গোলাপ বাগান", "Score 1,800 pts or clear 15 lines in Mom's rose sanctuary.", 1800, 15, 260, "🌹"),
-    LevelStage(7, "Sylhet Tea Valley", "সিলেটের চা বাগান", "Reach 2,200 pts or clear 18 lines with a warm cup of tea.", 2200, 18, 300, "🍵"),
-    LevelStage(8, "Jamdani Royal Loom", "ঢাকাই জামদানি", "Score 2,700 pts or clear 22 lines of royal silk blocks.", 2700, 22, 350, "👑"),
-    LevelStage(9, "Padma Sunset Boat", "পদ্মার গোধূলি", "Reach 3,200 pts or clear 26 lines under the golden sky.", 3200, 26, 400, "⛵"),
-    LevelStage(10, "Festive Alpona Courtyard", "উৎসবের আলপনা", "Score 3,800 pts or clear 30 lines with combo streaks.", 3800, 30, 450, "🎨"),
-    LevelStage(11, "Starlight Jasmine Night", "বেলি ফুলের রাত", "Reach 4,500 pts or clear 35 lines under twinkling stars.", 4500, 35, 500, "🌌"),
-    LevelStage(12, "Queen Ammu's Golden Palace", "সেরা আম্মুর প্রাসাদ", "Score 5,500 pts or clear 42 lines to claim the Royal Crown!", 5500, 42, 750, "🏆")
+    LevelStage(1, "Morning Blossom", "ভোরের ফুল", "Score 250 pts AND clear 3 lines to bloom the first flower.", 250, 3, 100, "🌸"),
+    LevelStage(2, "Butterfly Meadow", "প্রজাপতির মেলা", "Score 500 pts AND clear 5 lines with graceful moves.", 500, 5, 120, "🦋"),
+    LevelStage(3, "Shapla Waterlily Pond", "শাপলা বিল", "Score 800 pts AND clear 7 lines in the waterlily pond.", 800, 7, 150, "🌺"),
+    LevelStage(4, "Sunny Mango Orchard", "আমের বাগান", "Reach 1,100 pts AND clear 9 lines to harvest sweet mangoes.", 1100, 9, 180, "🥭"),
+    LevelStage(5, "Nakshi Kantha Weave", "নকশী কাঁথা", "Score 1,400 pts AND clear 12 lines to stitch golden patterns.", 1400, 12, 220, "🧵"),
+    LevelStage(6, "Mom's Rose Garden", "মায়ের গোলাপ বাগান", "Score 1,800 pts AND clear 15 lines in Mom's rose sanctuary.", 1800, 15, 260, "🌹"),
+    LevelStage(7, "Sylhet Tea Valley", "সিলেটের চা বাগান", "Reach 2,200 pts AND clear 18 lines with a warm cup of tea.", 2200, 18, 300, "🍵"),
+    LevelStage(8, "Jamdani Royal Loom", "ঢাকাই জামদানি", "Score 2,700 pts AND clear 22 lines of royal silk blocks.", 2700, 22, 350, "👑"),
+    LevelStage(9, "Padma Sunset Boat", "পদ্মার গোধূলি", "Reach 3,200 pts AND clear 26 lines under the golden sky.", 3200, 26, 400, "⛵"),
+    LevelStage(10, "Festive Alpona Courtyard", "উৎসবের আলপনা", "Score 3,800 pts AND clear 30 lines with combo streaks.", 3800, 30, 450, "🎨"),
+    LevelStage(11, "Starlight Jasmine Night", "বেলি ফুলের রাত", "Reach 4,500 pts AND clear 35 lines under twinkling stars.", 4500, 35, 500, "🌌"),
+    LevelStage(12, "Queen Ammu's Golden Palace", "সেরা আম্মুর প্রাসাদ", "Score 5,500 pts AND clear 42 lines to claim the Royal Crown!", 5500, 42, 750, "🏆")
 )
 
 @Composable
@@ -307,10 +307,14 @@ private fun LevelCard(
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = "Goal: ${level.targetScore} pts OR ${level.targetLines} lines",
+                        text = if (isCompleted) {
+                            "⭐⭐⭐ CLEARED (${level.targetScore} pts & ${level.targetLines} lines)"
+                        } else {
+                            "Required: ${level.targetScore} pts AND ${level.targetLines} lines"
+                        },
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Mint
+                        fontWeight = FontWeight.Black,
+                        color = if (isCompleted) GoldAccent else Mint
                     )
                 }
             }

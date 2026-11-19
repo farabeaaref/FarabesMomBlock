@@ -199,46 +199,118 @@ fun GameScreen(
 
                 val levelStage = viewModel.getLevelStage(activeGameMode)
                 if (levelStage != null) {
+                    val isScoreDone = gameState.score >= levelStage.targetScore
+                    val isLinesDone = gameState.linesClearedTotal >= levelStage.targetLines
                     val scoreRatio = (gameState.score.toFloat() / levelStage.targetScore.toFloat()).coerceIn(0f, 1f)
                     val lineRatio = (gameState.linesClearedTotal.toFloat() / levelStage.targetLines.toFloat()).coerceIn(0f, 1f)
-                    val lvlProgress = maxOf(scoreRatio, lineRatio)
-                    Row(
+                    val combinedProgress = ((scoreRatio * 0.5f) + (lineRatio * 0.5f)).coerceIn(0f, 1f)
+
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 2.dp)
+                            .padding(horizontal = 12.dp, vertical = 2.dp)
                             .appleGlassBar(
-                                shape = RoundedCornerShape(14.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 tintColor = remoteTheme.surfaceColor,
-                                strokeWidth = 1.4.dp,
-                                accentRim = remoteTheme.goldAccent
+                                strokeWidth = 1.5.dp,
+                                accentRim = if (isLevelCompleted) remoteTheme.accentColor else remoteTheme.goldAccent
                             )
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
-                        Text(
-                            text = if (isLevelCompleted) {
-                                "🌟 Lv.${levelStage.levelNumber} ${levelStage.title} COMPLETED!"
-                            } else {
-                                "${levelStage.rewardEmoji} Lv.${levelStage.levelNumber}: ${gameState.score}/${levelStage.targetScore} pts • ${gameState.linesClearedTotal}/${levelStage.targetLines} lines"
-                            },
-                            color = if (isLevelCompleted) remoteTheme.accentColor else GoldAccent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                        Box(
-                            modifier = Modifier
-                                .width(76.dp)
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFF170B2A))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            Text(
+                                text = "${levelStage.rewardEmoji} STAGE ${levelStage.levelNumber}: ${levelStage.title.uppercase()}",
+                                color = GoldAccent,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.6.sp
+                            )
+                            Text(
+                                text = if (isLevelCompleted) "👑 STAGE CLEARED!" else "REQUIRED: BOTH TARGETS",
+                                color = if (isLevelCompleted) Color(0xFF69F0AE) else Color.White.copy(alpha = 0.85f),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            // Objective 1: Score
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth(lvlProgress)
-                                    .fillMaxHeight()
-                                    .background(if (isLevelCompleted) remoteTheme.accentColor else GoldAccent)
-                            )
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isScoreDone) Color(0xFF1B5E20).copy(alpha = 0.65f) else Color(0xFF180A2E))
+                                    .border(
+                                        1.dp,
+                                        if (isScoreDone) Color(0xFF69F0AE) else GoldAccent.copy(alpha = 0.45f),
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = if (isScoreDone) "🎯 Score: ${gameState.score}/${levelStage.targetScore} ✅"
+                                    else "🎯 Score: ${gameState.score}/${levelStage.targetScore}",
+                                    color = if (isScoreDone) Color(0xFFB9F6CA) else Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            // Objective 2: Lines
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isLinesDone) Color(0xFF1B5E20).copy(alpha = 0.65f) else Color(0xFF180A2E))
+                                    .border(
+                                        1.dp,
+                                        if (isLinesDone) Color(0xFF69F0AE) else GoldAccent.copy(alpha = 0.45f),
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = if (isLinesDone) "⚡ Lines: ${gameState.linesClearedTotal}/${levelStage.targetLines} ✅"
+                                    else "⚡ Lines: ${gameState.linesClearedTotal}/${levelStage.targetLines}",
+                                    color = if (isLinesDone) Color(0xFFB9F6CA) else Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            // Combined Progress Bar
+                            Box(
+                                modifier = Modifier
+                                    .width(50.dp)
+                                    .height(10.dp)
+                                    .clip(RoundedCornerShape(5.dp))
+                                    .background(Color(0xFF140726))
+                                    .border(0.8.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(5.dp))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(combinedProgress)
+                                        .fillMaxHeight()
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                if (isLevelCompleted) listOf(Color(0xFF00E676), Color(0xFFB9F6CA))
+                                                else listOf(Color(0xFFFF8F00), GoldAccent)
+                                            )
+                                        )
+                                )
+                            }
                         }
                     }
                 }
@@ -315,16 +387,16 @@ fun GameScreen(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Bottom Encouragement Cloud Balloon with Mascot (matching reference)
+                // 3D Royal Glass & Gold Filigree Footer Capsule
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
-                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color(0xFFFFB6C1), Color(0xFFFF8DA1))
-                            )
+                        .height(50.dp)
+                        .appleGlassBar(
+                            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+                            tintColor = Color(0xFF2B104E),
+                            strokeWidth = 1.5.dp,
+                            accentRim = GoldAccent
                         )
                         .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.CenterStart
@@ -337,31 +409,33 @@ fun GameScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(44.dp)
-                                    .offset(y = (-4).dp),
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.14f))
+                                    .border(1.dp, GoldAccent, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CuteMascot(modifier = Modifier.size(40.dp))
+                                CuteMascot(modifier = Modifier.size(34.dp))
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "ENDLESS LOVE FOR MOM! 🥰",
-                                    fontSize = 13.sp,
+                                    text = "👑 ENDLESS LOVE FOR MOM! 🥰",
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = Color(0xFF5A1827),
+                                    color = GoldAccent,
                                     letterSpacing = 0.5.sp
                                 )
                                 Text(
-                                    text = "মায়ের জন্য ভালোবাসা • Made with love by Farabe",
+                                    text = "মায়ের জন্য ভালোবাসা • Royal Edition by Farabe",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF882038)
+                                    color = WarmCream.copy(alpha = 0.90f)
                                 )
                             }
                         }
 
-                        Text(text = "❤️", fontSize = 20.sp)
+                        Text(text = "💎❤️", fontSize = 16.sp)
                     }
                 }
             }
@@ -455,11 +529,20 @@ fun GameScreen(
 
             // Game Over or Challenge Stage Victory Dialog
             if (gameState.isGameOver || isLevelCompleted) {
-                val isWinEnd = (gameState.score >= gameState.highScore && gameState.score > 0) || isLevelCompleted
                 val currentStage = viewModel.getLevelStage(activeGameMode)
+                val isWinEnd = if (currentStage != null) {
+                    isLevelCompleted
+                } else {
+                    gameState.score >= gameState.highScore && gameState.score > 0
+                }
                 GameOverDialog(
                     score = gameState.score,
                     highScore = gameState.highScore,
+                    linesCleared = gameState.linesClearedTotal,
+                    targetScore = currentStage?.targetScore,
+                    targetLines = currentStage?.targetLines,
+                    rewardCoins = currentStage?.rewardCoins ?: 150,
+                    levelTitle = currentStage?.title,
                     hasVoiceMessage = viewModel.hasEndGameVoice(isWinEnd),
                     isPlayingVoice = isPlayingVoice,
                     isLevelWin = isLevelCompleted,

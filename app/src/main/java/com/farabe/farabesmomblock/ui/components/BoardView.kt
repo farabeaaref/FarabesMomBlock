@@ -74,14 +74,49 @@ fun BoardView(
             .fillMaxWidth()
             .aspectRatio(1f)
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(
-                Brush.verticalGradient(
-                    colors = listOf(WoodBoardBevel, WoodBoardBg, Color(0xFF1B110F))
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF5D4037), WoodBoardBevel, WoodBoardBg, Color(0xFF160D0B))
                 )
             )
-            .border(2.5.dp, Color(0xFF5C4035), RoundedCornerShape(22.dp))
-            .padding(6.dp)
+            .border(
+                width = 2.8.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFFFFE082),
+                        Color(0xFF8D6E63),
+                        Color(0xFFFFCA28),
+                        Color(0xFF5D4037)
+                    )
+                ),
+                shape = RoundedCornerShape(24.dp)
+            )
+            .drawBehind {
+                // 3D Outer Royal Arena Bevel + 4 Corner Golden Gems
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.16f),
+                    topLeft = Offset(4f, 4f),
+                    size = Size(size.width - 8f, size.height - 8f),
+                    cornerRadius = CornerRadius(52f, 52f),
+                    style = Stroke(width = 1.5f)
+                )
+                val cornerPts = listOf(
+                    Offset(16f, 16f),
+                    Offset(size.width - 16f, 16f),
+                    Offset(16f, size.height - 16f),
+                    Offset(size.width - 16f, size.height - 16f)
+                )
+                for (pt in cornerPts) {
+                    drawCircle(color = Color(0xFFFFD54F), radius = 4.5f, center = pt)
+                    drawCircle(color = Color.White.copy(alpha = 0.85f), radius = 1.8f, center = Offset(pt.x - 1f, pt.y - 1f))
+                }
+            }
+            .padding(7.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFF140B09))
+            .border(1.2.dp, Color(0xFF3E2723), RoundedCornerShape(18.dp))
+            .padding(3.dp)
     ) {
         Box(
             modifier = Modifier
