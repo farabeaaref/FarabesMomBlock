@@ -60,6 +60,12 @@ import com.farabe.farabesmomblock.ui.components.PieceTrayView
 import com.farabe.farabesmomblock.ui.components.PowerUpBar
 import com.farabe.farabesmomblock.ui.components.QuiltedWoodBackground
 import com.farabe.farabesmomblock.ui.components.ScoreHeader
+import com.farabe.farabesmomblock.ui.components.Unreal3DCrownIcon
+import com.farabe.farabesmomblock.ui.components.Unreal3DDiamondIcon
+import com.farabe.farabesmomblock.ui.components.Unreal3DHeartIcon
+import com.farabe.farabesmomblock.ui.components.Unreal3DLightningIcon
+import com.farabe.farabesmomblock.ui.components.Unreal3DStageCrestIcon
+import com.farabe.farabesmomblock.ui.components.Unreal3DTargetIcon
 import com.farabe.farabesmomblock.ui.components3d.Filament3DShowcase
 import com.farabe.farabesmomblock.ui.theme.GoldAccent
 import com.farabe.farabesmomblock.ui.theme.WarmCream
@@ -222,19 +228,32 @@ fun GameScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = "${levelStage.rewardEmoji} STAGE ${levelStage.levelNumber}: ${levelStage.title.uppercase()}",
-                                color = GoldAccent,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 0.6.sp
-                            )
-                            Text(
-                                text = if (isLevelCompleted) "👑 STAGE CLEARED!" else "REQUIRED: BOTH TARGETS",
-                                color = if (isLevelCompleted) Color(0xFF69F0AE) else Color.White.copy(alpha = 0.85f),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Black
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Unreal3DStageCrestIcon(
+                                    levelNumber = levelStage.levelNumber,
+                                    size = 16.dp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "STAGE ${levelStage.levelNumber}/100: ${levelStage.title.uppercase()}",
+                                    color = GoldAccent,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.6.sp
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (isLevelCompleted) {
+                                    Unreal3DCrownIcon(size = 14.dp)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = if (isLevelCompleted) "STAGE CLEARED!" else "REQUIRED: BOTH TARGETS",
+                                    color = if (isLevelCompleted) Color(0xFF69F0AE) else Color.White.copy(alpha = 0.85f),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
@@ -255,13 +274,17 @@ fun GameScreen(
                                     )
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
-                                Text(
-                                    text = if (isScoreDone) "🎯 Score: ${gameState.score}/${levelStage.targetScore} ✅"
-                                    else "🎯 Score: ${gameState.score}/${levelStage.targetScore}",
-                                    color = if (isScoreDone) Color(0xFFB9F6CA) else Color.White,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Unreal3DTargetIcon(size = 14.dp, isCompleted = isScoreDone)
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = if (isScoreDone) "Score: ${gameState.score}/${levelStage.targetScore} [OK]"
+                                        else "Score: ${gameState.score}/${levelStage.targetScore}",
+                                        color = if (isScoreDone) Color(0xFFB9F6CA) else Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.width(6.dp))
@@ -279,13 +302,17 @@ fun GameScreen(
                                     )
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
-                                Text(
-                                    text = if (isLinesDone) "⚡ Lines: ${gameState.linesClearedTotal}/${levelStage.targetLines} ✅"
-                                    else "⚡ Lines: ${gameState.linesClearedTotal}/${levelStage.targetLines}",
-                                    color = if (isLinesDone) Color(0xFFB9F6CA) else Color.White,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Unreal3DLightningIcon(size = 14.dp, isCompleted = isLinesDone)
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = if (isLinesDone) "Lines: ${gameState.linesClearedTotal}/${levelStage.targetLines} [OK]"
+                                        else "Lines: ${gameState.linesClearedTotal}/${levelStage.targetLines}",
+                                        color = if (isLinesDone) Color(0xFFB9F6CA) else Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.width(6.dp))
@@ -349,7 +376,7 @@ fun GameScreen(
 
                     if (isPlayingVoice) {
                         Text(
-                            text = "🎙️ Farabe is speaking to Mom...",
+                            text = "FARABE IS SPEAKING TO MOM...",
                             color = Color.White,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -419,15 +446,19 @@ fun GameScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Unreal3DCrownIcon(size = 14.dp)
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = "ENDLESS LOVE FOR MOM!",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = GoldAccent,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
                                 Text(
-                                    text = "👑 ENDLESS LOVE FOR MOM! 🥰",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = GoldAccent,
-                                    letterSpacing = 0.5.sp
-                                )
-                                Text(
-                                    text = "মায়ের জন্য ভালোবাসা • Royal Edition by Farabe",
+                                    text = "মায়ের জন্য ভালোবাসা • Royal 3D Edition by Farabe",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = WarmCream.copy(alpha = 0.90f)
@@ -435,7 +466,11 @@ fun GameScreen(
                             }
                         }
 
-                        Text(text = "💎❤️", fontSize = 16.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Unreal3DDiamondIcon(size = 17.dp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Unreal3DHeartIcon(size = 17.dp)
+                        }
                     }
                 }
             }

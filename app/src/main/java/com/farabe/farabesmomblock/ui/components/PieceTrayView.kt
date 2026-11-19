@@ -132,15 +132,36 @@ private fun TraySlot(
         }
     }
 
+    val slotTop = when (index) {
+        0 -> Color(0xFF1A2F66)
+        1 -> Color(0xFF2D1B63)
+        else -> Color(0xFF143E4F)
+    }
+    val slotBottom = when (index) {
+        0 -> Color(0xFF0E1A3D)
+        1 -> Color(0xFF180D38)
+        else -> Color(0xFF0A222E)
+    }
+    val slotRim = when (index) {
+        0 -> Color(0xFF00E5FF)
+        1 -> Color(0xFFE040FB)
+        else -> Color(0xFF00E676)
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isSelected) GoldAccent.copy(alpha = 0.15f) else CellSlotColor.copy(alpha = 0.6f))
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    if (isSelected) listOf(GoldAccent.copy(alpha = 0.35f), slotBottom)
+                    else listOf(slotTop, slotBottom)
+                )
+            )
             .border(
-                width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) GoldAccent else CardBorder.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(14.dp)
+                width = if (isSelected) 2.2.dp else 1.4.dp,
+                color = if (isSelected) GoldAccent else slotRim.copy(alpha = 0.65f),
+                shape = RoundedCornerShape(16.dp)
             )
             .onGloballyPositioned { slotCoords = it }
             .pointerInput(index, shape?.id) {
@@ -189,11 +210,10 @@ private fun TraySlot(
                 )
             }
         } else {
-            // Empty placeholder slot
-            Text(
-                text = "✓",
-                fontSize = 18.sp,
-                color = WarmCream.copy(alpha = 0.2f)
+            // 3D Crystal Socket Docked Indicator (No 2D text glyph)
+            Unreal3DDiamondIcon(
+                size = 16.dp,
+                tint = slotRim.copy(alpha = 0.45f)
             )
         }
     }

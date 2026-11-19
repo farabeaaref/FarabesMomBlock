@@ -42,6 +42,8 @@ val WoodBoardSlotShadow = Color(0xFF0C0706)
 fun BlockTile(
     color: BlockColor?,
     modifier: Modifier = Modifier,
+    row: Int = 0,
+    col: Int = 0,
     isGhost: Boolean = false,
     isClearing: Boolean = false,
     showMotif: Boolean = true,
@@ -66,25 +68,98 @@ fun BlockTile(
     }
 
     if (color == null) {
-        // Recessed 3D carved wooden pocket
+        // 3D Unreal-Engine PBR Recessed Crystal Socket with Quadrant & Checkerboard Gaming Color Identity!
+        val isEven = (row + col) % 2 == 0
+        val quadrantIndex = (if (row >= 4) 2 else 0) + (if (col >= 4) 1 else 0)
+
+        val socketTopColor: Color
+        val socketBottomColor: Color
+        val socketRimGlow: Color
+        when (quadrantIndex) {
+            0 -> { // Top-Left 4x4: Royal Sapphire & Electric Cyan
+                socketTopColor = if (isEven) Color(0xFF1E3A78) else Color(0xFF15295A)
+                socketBottomColor = if (isEven) Color(0xFF294F9E) else Color(0xFF1D3978)
+                socketRimGlow = Color(0xFF00E5FF)
+            }
+            1 -> { // Top-Right 4x4: Imperial Amethyst & Neon Violet
+                socketTopColor = if (isEven) Color(0xFF3B1F7A) else Color(0xFF2A1559)
+                socketBottomColor = if (isEven) Color(0xFF4F2B9E) else Color(0xFF391D75)
+                socketRimGlow = Color(0xFFE040FB)
+            }
+            2 -> { // Bottom-Left 4x4: Cyber Teal & Emerald Jade
+                socketTopColor = if (isEven) Color(0xFF124A59) else Color(0xFF0C3540)
+                socketBottomColor = if (isEven) Color(0xFF1B6478) else Color(0xFF134857)
+                socketRimGlow = Color(0xFF00E676)
+            }
+            else -> { // Bottom-Right 4x4: Royal Crimson-Plum & Sunset Gold
+                socketTopColor = if (isEven) Color(0xFF4F1D4C) else Color(0xFF381336)
+                socketBottomColor = if (isEven) Color(0xFF692865) else Color(0xFF4D1B4A)
+                socketRimGlow = Color(0xFFFFCA28)
+            }
+        }
+
         Box(
             modifier = modifier
-                .padding(2.2.dp)
+                .padding(2.0.dp)
                 .clip(RoundedCornerShape(cornerRadius))
-                .background(WoodBoardSlotBg)
-                .border(0.9.dp, WoodBoardSlotBorder, RoundedCornerShape(cornerRadius))
                 .drawBehind {
+                    val w = size.width
+                    val h = size.height
+                    val rPx = cornerRadius.toPx()
+                    val bev = (size.minDimension * 0.14f).coerceAtLeast(2.8f)
+
+                    // 1. Outer recessed metallic socket body
                     drawRoundRect(
-                        color = WoodBoardSlotShadow.copy(alpha = 0.72f),
-                        topLeft = Offset(0f, 0f),
-                        size = Size(size.width, size.height * 0.36f),
-                        cornerRadius = CornerRadius(10f, 10f)
+                        brush = Brush.linearGradient(
+                            colors = listOf(socketTopColor, socketBottomColor),
+                            start = Offset(0f, 0f),
+                            end = Offset(w, h)
+                        ),
+                        cornerRadius = CornerRadius(rPx, rPx)
                     )
+
+                    // 2. Top-left 3D sunken inner occlusion shadow
                     drawRoundRect(
-                        color = Color.White.copy(alpha = 0.04f),
-                        topLeft = Offset(size.width * 0.08f, size.height * 0.78f),
-                        size = Size(size.width * 0.84f, size.height * 0.16f),
-                        cornerRadius = CornerRadius(8f, 8f)
+                        color = Color(0xFF070B19).copy(alpha = 0.65f),
+                        topLeft = Offset(0f, 0f),
+                        size = Size(w, bev * 1.35f),
+                        cornerRadius = CornerRadius(rPx, rPx)
+                    )
+
+                    // 3. Inner 3D crystal socket dish
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                socketRimGlow.copy(alpha = if (isEven) 0.22f else 0.13f),
+                                Color(0xFF0B1026).copy(alpha = 0.45f)
+                            ),
+                            center = Offset(w * 0.5f, h * 0.5f),
+                            radius = w * 0.62f
+                        ),
+                        topLeft = Offset(bev, bev),
+                        size = Size(w - bev * 2f, h - bev * 2f),
+                        cornerRadius = CornerRadius((rPx - 2f).coerceAtLeast(3f), (rPx - 2f).coerceAtLeast(3f))
+                    )
+
+                    // 4. Center 3D micro-diamond docking node
+                    drawCircle(
+                        color = socketRimGlow.copy(alpha = if (isEven) 0.40f else 0.25f),
+                        radius = (size.minDimension * 0.065f).coerceAtLeast(1.8f),
+                        center = Offset(w * 0.5f, h * 0.5f)
+                    )
+
+                    // 5. Crisp 3D rim border with gaming color identity
+                    drawRoundRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.55f),
+                                socketRimGlow.copy(alpha = if (isEven) 0.65f else 0.42f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(w, h)
+                        ),
+                        cornerRadius = CornerRadius(rPx, rPx),
+                        style = Stroke(width = 1.3f)
                     )
                 }
         )

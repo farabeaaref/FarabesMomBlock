@@ -294,7 +294,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             put("playerId", pid)
             put("playerName", s.momName)
             put("deviceModel", devModel)
-            put("appVersion", "1.2.3")
+            put("appVersion", "1.3.0")
             put("currentActivity", detailedActivity)
             put("screenState", currentScreenName)
             put("isInGame", isCurrentlyInGame)
@@ -352,12 +352,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val action = cmd.optString("action", "")
             when (action) {
                 "SET_LEVEL" -> {
-                    val targetLvl = cmd.optInt("level", 1).coerceIn(1, 12)
+                    val targetLvl = cmd.optInt("level", 1).coerceIn(1, 100)
                     val launchNow = cmd.optBoolean("launchNow", false)
                     preferencesManager.setUnlockedLevelFromAdmin(targetLvl)
                     soundManager.playUnlockReward()
                     logPlayerEvent("👑 Admin unlocked/set Level $targetLvl")
-                    lastSyncBanner.value = "👑 Farabe unlocked Challenge Level $targetLvl for you!"
+                    lastSyncBanner.value = "Farabe unlocked Challenge Stage $targetLvl/100 for you!"
                     if (launchNow) {
                         startNewGame("LEVEL_$targetLvl")
                     }
@@ -759,10 +759,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 isLevelCompleted.value = true
                 soundManager.playUnlockReward()
                 playWinVoice()
-                logPlayerEvent("🏆 WON Level ${stage.levelNumber}: ${stage.title}! (Score: ${engine.currentState.score}/${stage.targetScore}, Lines: ${engine.currentState.linesClearedTotal}/${stage.targetLines}, Unlocked Lv.${(stage.levelNumber + 1).coerceAtMost(12)})")
+                logPlayerEvent("🏆 WON Level ${stage.levelNumber}: ${stage.title}! (Score: ${engine.currentState.score}/${stage.targetScore}, Lines: ${engine.currentState.linesClearedTotal}/${stage.targetLines}, Unlocked Lv.${(stage.levelNumber + 1).coerceAtMost(100)})")
                 showBanner(
-                    "LEVEL ${stage.levelNumber} WON! 🎉🌟",
-                    "অভিনন্দন আম্মু! Level ${(stage.levelNumber + 1).coerceAtMost(12)} Unlocked! (+${stage.rewardCoins} 🪙)"
+                    "STAGE ${stage.levelNumber} VICTORY!",
+                    "অভিনন্দন আম্মু! Stage ${(stage.levelNumber + 1).coerceAtMost(100)}/100 Unlocked! (+${stage.rewardCoins} Coins)"
                 )
                 viewModelScope.launch {
                     preferencesManager.markLevelCompleted(stage.levelNumber, stage.rewardCoins)
@@ -885,6 +885,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         logPlayerEvent("🎮 Entered Game -> $modeLabel")
 
         engine.startNewGame(initialHighScore = _userSettings.value.allTimeHighScore)
+        if (stg != null && stg.levelNumber >= 2) {
+            val preFilledBoard = buildStageStarterBoard(stg.levelNumber)
+            engine.restoreGame(
+                board = preFilledBoard,
+                trayPieces = engine.currentState.trayPieces,
+                score = 0,
+                highScore = _userSettings.value.allTimeHighScore,
+                comboStreak = 0,
+                moveCount = 0,
+                linesClearedTotal = 0
+            )
+        }
         _gameState.value = engine.currentState
         viewModelScope.launch {
             repository.clearActiveSave()
@@ -893,6 +905,31 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             currentScreenName = "Playing $modeLabel"
             pushTelemetryNow()
         }
+    }
+
+    /**
+     * Generates a handcrafted symmetric 3D crystal puzzle starter formation for Stages 2..100
+     * so every stage in the 100-Level Royal Campaign has a unique puzzle layout!
+     */
+    private fun buildStageStarterBoard(levelNumber: Int): com.farabe.farabesmomblock.engine.Board {
+        val colors = com.farabe.farabesmomblock.engine.BlockColor.values()
+        val c1 = colors[(levelNumber * 3) % colors.size]
+        val c2 = colors[(levelNumber * 5 + 1) % colors.size]
+        val grid = MutableList(8) { MutableList<com.farabe.farabesmomblock.engine.BlockColor?>(8) { null } }
+
+        val coords = when (levelNumber % 6) {
+            0 -> listOf(0 to 0, 0 to 7, 7 to 0, 7 to 7, 3 to 3, 3 to 4, 4 to 3, 4 to 4)
+            1 -> listOf(1 to 1, 1 to 6, 6 to 1, 6 to 6, 2 to 3, 2 to 4, 5 to 3, 5 to 4)
+            2 -> listOf(0 to 3, 0 to 4, 7 to 3, 7 to 4, 3 to 0, 4 to 0, 3 to 7, 4 to 7)
+            3 -> listOf(1 to 2, 1 to 5, 6 to 2, 6 to 5, 3 to 1, 4 to 1, 3 to 6, 4 to 6)
+            4 -> listOf(2 to 2, 2 to 5, 5 to 2, 5 to 5, 0 to 1, 0 to 6, 7 to 1, 7 to 6)
+            else -> listOf(1 to 3, 1 to 4, 6 to 3, 6 to 4, 3 to 2, 4 to 2, 3 to 5, 4 to 5)
+        }
+
+        coords.forEachIndexed { idx, (r, c) ->
+            grid[r][c] = if (idx % 2 == 0) c1 else c2
+        }
+        return com.farabe.farabesmomblock.engine.Board(rows = 8, cols = 8, grid = grid.map { it.toList() })
     }
 
     fun onShowcasePoked() {

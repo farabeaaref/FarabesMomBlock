@@ -192,7 +192,7 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { pref ->
             val curUnlocked = pref[Keys.HIGHEST_UNLOCKED_LEVEL] ?: 1
             if (levelNumber + 1 > curUnlocked) {
-                pref[Keys.HIGHEST_UNLOCKED_LEVEL] = (levelNumber + 1).coerceAtMost(12)
+                pref[Keys.HIGHEST_UNLOCKED_LEVEL] = (levelNumber + 1).coerceAtMost(100)
             }
             val existing = (pref[Keys.COMPLETED_LEVELS_CSV] ?: "")
                 .split(",")
@@ -262,7 +262,7 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setUnlockedLevelFromAdmin(targetLevel: Int) {
         context.dataStore.edit { pref ->
-            val cleanLvl = targetLevel.coerceIn(1, 12)
+            val cleanLvl = targetLevel.coerceIn(1, 100)
             pref[Keys.HIGHEST_UNLOCKED_LEVEL] = cleanLvl
             val completed = (1 until cleanLvl).toSet()
             pref[Keys.COMPLETED_LEVELS_CSV] = completed.joinToString(",")

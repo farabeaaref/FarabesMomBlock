@@ -119,8 +119,10 @@ fun ScoreHeader(
                         letterSpacing = 0.5.sp
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        Unreal3DCrownIcon(size = 15.dp)
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "👑 BEST: $highScore",
+                            text = "BEST: $highScore",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = GoldAccent
@@ -130,7 +132,7 @@ fun ScoreHeader(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // 3. Apple Glass Gold Coin / Seed Pill
+                // 3. Apple Glass Gold Coin / Seed Pill with 3D Embossed Coin
                 Box(
                     modifier = Modifier
                         .height(38.dp)
@@ -144,21 +146,7 @@ fun ScoreHeader(
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clip(CircleShape)
-                                .background(GoldAccent)
-                                .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = Color(0xFF6B3E00),
-                                modifier = Modifier.size(15.dp)
-                            )
-                        }
+                        Unreal3DCoinIcon(size = 22.dp)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "$seedsCount",
@@ -211,13 +199,17 @@ fun ScoreHeader(
                     )
                     .padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
-                Text(
-                    text = "🔥 COMBO x$comboStreak STREAK! দারুণ!",
-                    color = Color.White,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 12.sp,
-                    letterSpacing = 0.5.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Unreal3DLightningIcon(size = 15.dp, isCompleted = true)
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "COMBO x$comboStreak STREAK! দারুণ!",
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.5.sp
+                    )
+                }
             }
         }
     }

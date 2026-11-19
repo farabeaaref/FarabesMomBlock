@@ -788,9 +788,11 @@
               ? `<span style="color:#fbbf24; font-weight:700; font-size:12px;">🟡 IDLE (${formatLastSeen(lastSeenSec)})</span>`
               : `<span style="color:#9ca3af; font-weight:600; font-size:12px;">⚪ Offline (${formatLastSeen(lastSeenSec)})</span>`);
 
-        // 12-Level Campaign Visual Map
+        // 100-Level Campaign Visual Map (shows current chapter 20-level window around player's progress)
         let levelMapHtml = '';
-        for (let lvl = 1; lvl <= 12; lvl++) {
+        const winStart = Math.max(1, Math.min(81, Math.floor((unlockedLvl - 1) / 10) * 10 + 1));
+        const winEnd = Math.min(100, winStart + 19);
+        for (let lvl = winStart; lvl <= winEnd; lvl++) {
           const isDone = completedSet.has(lvl);
           const isCurrentPlaying = p.isInGame && Number(p.currentLevelNumber) === lvl;
           const isUnlocked = lvl <= unlockedLvl || isDone;
@@ -804,8 +806,8 @@
           ? p.recentEvents.slice(0, 8).map(ev => `<div style="padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.06);">${ev}</div>`).join('')
           : `<div>No recent events yet.</div>`;
 
-        const levelSelectOptions = Array.from({length: 12}, (_, i) => i + 1)
-          .map(l => `<option value="${l}" ${l === unlockedLvl ? 'selected' : ''}>Level ${l}</option>`).join('');
+        const levelSelectOptions = Array.from({length: 100}, (_, i) => i + 1)
+          .map(l => `<option value="${l}" ${l === unlockedLvl ? 'selected' : ''}>Level ${l} / 100</option>`).join('');
 
         return `
           <div class="player-card ${p.isOnline ? 'online' : ''}" style="grid-column: 1 / -1;">
@@ -835,10 +837,10 @@
               </div>
             </div>
 
-            <!-- 12-Stage Challenge Progression Strip -->
+            <!-- 100-Stage Challenge Progression Strip -->
             <div style="margin-top:10px;">
               <div style="font-size:11px; color:var(--muted); font-weight:700; margin-bottom:5px;">
-                👑 12-Stage Challenge Roadmap (Unlocked: Lv.${unlockedLvl}/12 • Completed: ${p.completedLevelsCount || 0}/12):
+                👑 100-Stage Royal Campaign (Unlocked: Lv.${unlockedLvl}/100 • Completed: ${p.completedLevelsCount || 0}/100):
               </div>
               <div style="display:flex; flex-wrap:wrap; gap:5px;">${levelMapHtml}</div>
             </div>

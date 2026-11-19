@@ -89,7 +89,7 @@ fun PauseDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "⏸️ ROYAL STAGE PAUSED",
+                        text = "ROYAL STAGE PAUSED",
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Black,
                         color = Color(0xFF2B1000),
@@ -98,7 +98,7 @@ fun PauseDialog(
                 }
 
                 Text(
-                    text = "একটু বিশ্রাম নাও আম্মু! Take a breath, Mom ❤️",
+                    text = "একটু বিশ্রাম নাও আম্মু! Take a breath, Mom",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = WarmCream.copy(alpha = 0.88f),
@@ -165,7 +165,7 @@ fun PauseDialog(
                             .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Text(
-                            text = "🔊 Sound Effects",
+                            text = "SOUND EFFECTS",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = GoldAccent
@@ -180,7 +180,7 @@ fun PauseDialog(
                         )
 
                         Text(
-                            text = "🎵 Mom's Bangla Song & Music",
+                            text = "MOM'S BANGLA SONG & MUSIC",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = GoldAccent
@@ -199,7 +199,7 @@ fun PauseDialog(
 
                     Luxury3DGameButton(
                         title = "RESUME PLAYING",
-                        subtitle = "খেলা চালিয়ে যাও ▶",
+                        subtitle = "খেলা চালিয়ে যাও",
                         icon = Icons.Default.PlayArrow,
                         topColor = Color(0xFF66BB6A),
                         bottomColor = Color(0xFF2E7D32),
@@ -215,7 +215,7 @@ fun PauseDialog(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Luxury3DCompactButton(
-                            title = "Restart 🔄",
+                            title = "RESTART",
                             icon = Icons.Default.Refresh,
                             topColor = Color(0xFFEC407A),
                             bottomColor = Color(0xFFAD1457),
@@ -224,7 +224,7 @@ fun PauseDialog(
                             modifier = Modifier.weight(1f)
                         )
                         Luxury3DCompactButton(
-                            title = "Home 🏠",
+                            title = "HOME",
                             icon = Icons.Default.Home,
                             topColor = Color(0xFF5E35B1),
                             bottomColor = Color(0xFF311B92),

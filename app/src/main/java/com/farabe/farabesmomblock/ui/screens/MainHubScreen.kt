@@ -210,7 +210,7 @@ fun MainHubScreen(
                         onModeSelected = { selectedPlayMode = it },
                         onPlayClick = {
                             if (selectedPlayMode == "LEVELS") {
-                                val nextStage = userSettings.highestUnlockedLevel.coerceIn(1, 12)
+                                val nextStage = userSettings.highestUnlockedLevel.coerceIn(1, 100)
                                 onPlayMode("LEVEL_$nextStage")
                             } else {
                                 onPlayMode(selectedPlayMode)
@@ -277,7 +277,7 @@ fun MainHubScreen(
                             viewModel.upgradeHelper(isFarabe)
                         },
                         onPlayForTask = {
-                            val nextStage = userSettings.highestUnlockedLevel.coerceIn(1, 12)
+                            val nextStage = userSettings.highestUnlockedLevel.coerceIn(1, 100)
                             onPlayMode("LEVEL_$nextStage")
                         }
                     )
@@ -479,14 +479,14 @@ fun MainHubScreen(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Challenge Stage: Lv.${userSettings.highestUnlockedLevel}/12 • Gems: ${userSettings.gems} 💎",
+                text = "Challenge Stage: Lv.${userSettings.highestUnlockedLevel}/100 • Gems: ${userSettings.gems}",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF4A2511)
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "👨‍👩‍👧‍👦 Switch Active Family Player:",
+                text = "Switch Active Family Player:",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
                 color = Color(0xFF4A2511)
@@ -496,7 +496,7 @@ fun MainHubScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                listOf("Mom ❤️", "Baba 👑", "Sister 🌸", "Brother 🌟").forEach { preset ->
+                listOf("Mom", "Baba", "Nusrat", "Brother").forEach { preset ->
                     val isCurrent = userSettings.momName.equals(preset, ignoreCase = true)
                     Box(
                         modifier = Modifier
@@ -612,9 +612,9 @@ private fun HomeTabContent(
                     )
                 }
                 Text(
-                    text = "👤 $momName ▾",
+                    text = "PLAYER: ${momName.uppercase()}",
                     color = theme.goldAccent,
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
@@ -646,9 +646,13 @@ private fun HomeTabContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("🌱 500", color = Color.White.copy(alpha = 0.75f), fontSize = 10.sp)
-                Text("🎁 750", color = Color.White.copy(alpha = 0.75f), fontSize = 10.sp)
-                Text("👑 $milestoneTarget", color = theme.goldAccent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("TIER I: 500", color = Color.White.copy(alpha = 0.75f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("CHEST: 750", color = Color.White.copy(alpha = 0.75f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    com.farabe.farabesmomblock.ui.components.Unreal3DCrownIcon(size = 12.dp)
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text("$milestoneTarget", color = theme.goldAccent, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                }
             }
         }
 
@@ -777,7 +781,7 @@ private fun HomeTabContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 8.dp)
             ) {
-                listOf("LEVELS" to "Challenge ⭐", "CLASSIC" to "Classic ♾️", "RELAX" to "Relax 🌸").forEach { (key, title) ->
+                listOf("LEVELS" to "100 STAGES", "CLASSIC" to "CLASSIC", "RELAX" to "RELAX").forEach { (key, title) ->
                     val selected = activeMode == key
                     Box(
                         modifier = Modifier
@@ -803,12 +807,12 @@ private fun HomeTabContent(
                 }
             }
 
-            val currentStage = HANDCRAFTED_LEVELS.firstOrNull { it.levelNumber == highestUnlockedLevel.coerceIn(1, 12) }
+            val currentStage = HANDCRAFTED_LEVELS.firstOrNull { it.levelNumber == highestUnlockedLevel.coerceIn(1, 100) }
             GlossyPlayButton(
-                title = if (activeMode == "LEVELS") "PLAY LEVEL ${highestUnlockedLevel.coerceIn(1, 12)}" else "PLAY",
+                title = if (activeMode == "LEVELS") "PLAY STAGE ${highestUnlockedLevel.coerceIn(1, 100)} / 100" else "PLAY",
                 subtitle = when (activeMode) {
                     "RELAX" -> "PEACEFUL MODE • চলো খেলি"
-                    "LEVELS" -> "${currentStage?.rewardEmoji ?: "⭐"} ${currentStage?.title ?: "Challenge"} ($completedLevelsCount/12 Won)"
+                    "LEVELS" -> "${currentStage?.title ?: "Royal Campaign"} ($completedLevelsCount/100 Cleared)"
                     else -> "HIGH SCORE: $highScore"
                 },
                 accentColor = theme.accentColor,
@@ -818,7 +822,7 @@ private fun HomeTabContent(
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "🎵 Now Playing: $songTitle",
+                text = "NOW PLAYING: $songTitle",
                 color = Color.White.copy(alpha = 0.78f),
                 fontSize = 10.sp,
                 maxLines = 1,

@@ -122,7 +122,7 @@ fun GameOverDialog(
     )
 
     val rimColor = if (isOverallWin) Color(0xFFFFD54F) else Color(0xFFFF5252)
-    val nextLevelNum = ((currentLevelNumber ?: 1) + 1).coerceAtMost(12)
+    val nextLevelNum = ((currentLevelNumber ?: 1) + 1).coerceAtMost(TOTAL_CAMPAIGN_LEVELS)
 
     Dialog(onDismissRequest = { /* Strict modal: player must choose action */ }) {
         Box(
@@ -206,20 +206,36 @@ fun GameOverDialog(
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = when {
-                            isChallengeMode && isLevelWin -> "👑 LEVEL $currentLevelNumber VICTORY!"
-                            isChallengeMode && !isLevelWin -> "🛡️ LEVEL $currentLevelNumber INCOMPLETE"
-                            isOverallWin -> "👑 NEW ROYAL RECORD!"
-                            else -> "✨ ROUND COMPLETE ✨"
-                        },
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.8.sp,
-                        color = if (isOverallWin) Color(0xFF2B1000) else Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (isOverallWin) {
+                            com.farabe.farabesmomblock.ui.components.Unreal3DCrownIcon(size = 18.dp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = when {
+                                isChallengeMode && isLevelWin -> "STAGE $currentLevelNumber VICTORY!"
+                                isChallengeMode && !isLevelWin -> "STAGE $currentLevelNumber INCOMPLETE"
+                                isOverallWin -> "NEW ROYAL RECORD!"
+                                else -> "ROUND COMPLETE"
+                            },
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.8.sp,
+                            color = if (isOverallWin) Color(0xFF2B1000) else Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -227,11 +243,11 @@ fun GameOverDialog(
                 Text(
                     text = when {
                         isChallengeMode && isLevelWin ->
-                            "অভিনন্দন আম্মু! Both targets cleared — Level $nextLevelNum is now UNLOCKED! 🌟"
+                            "অভিনন্দন আম্মু! Both targets cleared — Stage $nextLevelNum/$TOTAL_CAMPAIGN_LEVELS is now UNLOCKED!"
                         isChallengeMode && !isLevelWin ->
-                            "আম্মু, পরের লেভেলে যেতে হলে এই লেভেলের Score ও Lines দুটি লক্ষ্যই পূরণ করতে হবে! 💪"
+                            "আম্মু, পরের লেভেলে যেতে হলে এই লেভেলের Score ও Lines দুটি লক্ষ্যই পূরণ করতে হবে!"
                         else ->
-                            "দারুণ খেলেছো আম্মু! Every move brings joy to our family ❤️"
+                            "দারুণ খেলেছো আম্মু! Every move brings joy to our family."
                     },
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -295,11 +311,12 @@ fun GameOverDialog(
                             if (isLevelWin) {
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "• +$rewardCoins 🪙",
+                                    text = "• +$rewardCoins ",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Black,
                                     color = Color(0xFF69F0AE)
                                 )
+                                com.farabe.farabesmomblock.ui.components.Unreal3DCoinIcon(size = 14.dp)
                             }
                         }
 
@@ -329,7 +346,7 @@ fun GameOverDialog(
                 if (hasVoiceMessage) {
                     Luxury3DGameButton(
                         title = if (isPlayingVoice) "PLAYING FARABE'S VOICE..." else "HEAR FARABE'S VOICE NOTE",
-                        subtitle = "ফারাবীর ভয়েস মেসেজ শুনো 🎙️",
+                        subtitle = "ফারাবীর ভয়েস মেসেজ শুনো",
                         icon = if (isPlayingVoice) Icons.Default.GraphicEq else Icons.Default.VolumeUp,
                         topColor = Color(0xFFAB47BC),
                         bottomColor = Color(0xFF6A1B9A),
@@ -346,7 +363,7 @@ fun GameOverDialog(
                         // WON BOTH OBJECTIVES -> Unlock & Offer Next Level!
                         Luxury3DGameButton(
                             title = "NEXT STAGE: LEVEL $nextLevelNum",
-                            subtitle = "পরের লেভেল খেলো • Unlocked! 🌟",
+                            subtitle = "পরের লেভেল খেলো • Unlocked!",
                             icon = Icons.Default.PlayArrow,
                             topColor = Color(0xFF66BB6A),
                             bottomColor = Color(0xFF2E7D32),
@@ -359,7 +376,7 @@ fun GameOverDialog(
                         // FAILED CURRENT LEVEL -> Strictly locked next level; prominent Retry current level!
                         Luxury3DGameButton(
                             title = "RETRY LEVEL $currentLevelNumber",
-                            subtitle = "আবার চেষ্টা করো • Beat Lv.$currentLevelNumber to unlock Lv.$nextLevelNum 🔒",
+                            subtitle = "আবার চেষ্টা করো • Beat Lv.$currentLevelNumber to unlock Lv.$nextLevelNum",
                             icon = Icons.Default.Refresh,
                             topColor = Color(0xFFFF7043),
                             bottomColor = Color(0xFFD84315),
@@ -374,7 +391,7 @@ fun GameOverDialog(
                 if (!isChallengeMode || isLevelWin) {
                     Luxury3DGameButton(
                         title = if (isChallengeMode) "REPLAY LEVEL $currentLevelNumber" else "PLAY AGAIN",
-                        subtitle = "আবার খেলো 🔄",
+                        subtitle = "আবার খেলো",
                         icon = Icons.Default.Refresh,
                         topColor = Color(0xFFEC407A),
                         bottomColor = Color(0xFFAD1457),
@@ -391,7 +408,7 @@ fun GameOverDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Luxury3DCompactButton(
-                        title = "Garden 🌸",
+                        title = "GARDEN",
                         icon = Icons.Default.Yard,
                         topColor = Color(0xFF26A69A),
                         bottomColor = Color(0xFF00695C),
@@ -400,7 +417,7 @@ fun GameOverDialog(
                         modifier = Modifier.weight(1f)
                     )
                     Luxury3DCompactButton(
-                        title = "Home 🏠",
+                        title = "HOME",
                         icon = Icons.Default.Home,
                         topColor = Color(0xFF5E35B1),
                         bottomColor = Color(0xFF311B92),
@@ -446,7 +463,7 @@ private fun ObjectiveProgressRow(
                 )
             }
             Text(
-                text = if (isMet) "$current / $target ✅" else "$current / $target (Need ${target - current} more)",
+                text = if (isMet) "$current / $target [CLEARED]" else "$current / $target (Need ${target - current} more)",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 color = accent

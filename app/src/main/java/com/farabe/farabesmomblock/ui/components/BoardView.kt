@@ -77,29 +77,30 @@ fun BoardView(
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(Color(0xFF5D4037), WoodBoardBevel, WoodBoardBg, Color(0xFF160D0B))
+                    colors = listOf(Color(0xFF1E293B), Color(0xFF0F172A), Color(0xFF1E1B4B), Color(0xFF090D16))
                 )
             )
             .border(
-                width = 2.8.dp,
+                width = 3.0.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFFFFE082),
-                        Color(0xFF8D6E63),
+                        Color(0xFFFFF59D),
+                        Color(0xFF00E5FF),
                         Color(0xFFFFCA28),
-                        Color(0xFF5D4037)
+                        Color(0xFFE040FB),
+                        Color(0xFFFFF59D)
                     )
                 ),
                 shape = RoundedCornerShape(24.dp)
             )
             .drawBehind {
-                // 3D Outer Royal Arena Bevel + 4 Corner Golden Gems
+                // 3D Outer Unreal Metallic Bevel + 4 Corner Golden-Cyan Energy Rivets
                 drawRoundRect(
-                    color = Color.White.copy(alpha = 0.16f),
+                    color = Color.White.copy(alpha = 0.22f),
                     topLeft = Offset(4f, 4f),
                     size = Size(size.width - 8f, size.height - 8f),
                     cornerRadius = CornerRadius(52f, 52f),
-                    style = Stroke(width = 1.5f)
+                    style = Stroke(width = 1.6f)
                 )
                 val cornerPts = listOf(
                     Offset(16f, 16f),
@@ -108,14 +109,15 @@ fun BoardView(
                     Offset(size.width - 16f, size.height - 16f)
                 )
                 for (pt in cornerPts) {
-                    drawCircle(color = Color(0xFFFFD54F), radius = 4.5f, center = pt)
-                    drawCircle(color = Color.White.copy(alpha = 0.85f), radius = 1.8f, center = Offset(pt.x - 1f, pt.y - 1f))
+                    drawCircle(color = Color(0xFFFFB300), radius = 5.2f, center = pt)
+                    drawCircle(color = Color(0xFF00E5FF), radius = 2.8f, center = pt)
+                    drawCircle(color = Color.White, radius = 1.2f, center = Offset(pt.x - 1f, pt.y - 1f))
                 }
             }
             .padding(7.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFF140B09))
-            .border(1.2.dp, Color(0xFF3E2723), RoundedCornerShape(18.dp))
+            .background(Color(0xFF080D1F))
+            .border(1.5.dp, Color(0xFF38BDF8).copy(alpha = 0.45f), RoundedCornerShape(18.dp))
             .padding(3.dp)
     ) {
         Box(
@@ -200,6 +202,8 @@ fun BoardView(
 
                         BlockTile(
                             color = displayColor,
+                            row = r,
+                            col = c,
                             isGhost = isGhost,
                             isClearing = isClearing,
                             showMotif = true,
