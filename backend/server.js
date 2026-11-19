@@ -19,6 +19,15 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 
+// Prune duplicate timestamped APK uploads on boot so persistent volume never fills up
+try {
+  for (const f of fs.readdirSync(UPLOADS_DIR)) {
+    if (f.toLowerCase().endsWith('.apk') && f !== 'FarabesMomBlock-latest.apk') {
+      fs.unlinkSync(path.join(UPLOADS_DIR, f));
+    }
+  }
+} catch (_) {}
+
 // Seed persistent volume with initial config on first Railway boot
 if (!fs.existsSync(CONFIG_PATH) && fs.existsSync(SEED_CONFIG_PATH)) {
   fs.copyFileSync(SEED_CONFIG_PATH, CONFIG_PATH);
@@ -431,11 +440,22 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true, config: resolveConfigUrls(cfg, baseUrl) });
     }
 
-    // 6. Upload Media (background, mom photo, helper avatar, sketchbook, mp3 song)
+    // 6. Upload Media (background, mom photo, helper avatar, sketchbook, mp3 song, apk)
     if (req.method === 'POST' && pathname === '/api/upload') {
       const targetType = urlObj.searchParams.get('type') || 'song';
       const origName = urlObj.searchParams.get('name') || req.headers['x-filename'] || 'upload.bin';
-      const cleanName = `${Date.now()}_${path.basename(origName).replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      if (targetType === 'apk') {
+        try {
+          for (const f of fs.readdirSync(UPLOADS_DIR)) {
+            if (f.toLowerCase().endsWith('.apk')) {
+              fs.unlinkSync(path.join(UPLOADS_DIR, f));
+            }
+          }
+        } catch (_) {}
+      }
+      const cleanName = targetType === 'apk'
+        ? 'FarabesMomBlock-latest.apk'
+        : `${Date.now()}_${path.basename(origName).replace(/[^a-zA-Z0-9._-]/g, '_')}`;
       const destPath = path.join(UPLOADS_DIR, cleanName);
 
       const chunks = [];
@@ -491,8 +511,6 @@ const server = http.createServer(async (req, res) => {
           bumpVersion(cfg, 'আম্মু, নতুন কম্বো ভয়েস যোগ হয়েছে! 🎙️✨', 'বড় কম্বো করলে ফারাবীর কণ্ঠ শুনবে!');
         }
       } else if (targetType === 'apk') {
-        const latestAliasPath = path.join(UPLOADS_DIR, 'FarabesMomBlock-latest.apk');
-        fs.copyFileSync(destPath, latestAliasPath);
         const reqVersionCode = Number(urlObj.searchParams.get('versionCode'));
         const reqVersionName = urlObj.searchParams.get('versionName') || '';
         const reqReleaseNotes = urlObj.searchParams.get('releaseNotes') || '';
@@ -502,7 +520,7 @@ const server = http.createServer(async (req, res) => {
         cfg.appDownloadUrl = '/uploads/FarabesMomBlock-latest.apk';
         bumpVersion(
           cfg,
-          `আম্মু ও পরিবার, গেমের নতুন ভার্সন v${cfg.appVersionName || cfg.appVersionCode} এসেছে! 📲❤️`,
+          `আম্মু ও পরিবার, গেমের নতুন ভার্সন v${cfg.appVersionName || cfg.appVersionCode} এসেছে!`,
           'নতুন ফিচার পেতে গেমের ভেতর Update বাটনে ট্যাপ করো!'
         );
       }
