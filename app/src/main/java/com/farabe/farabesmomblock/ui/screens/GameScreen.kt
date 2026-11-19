@@ -228,30 +228,38 @@ fun GameScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
                                 Unreal3DStageCrestIcon(
                                     levelNumber = levelStage.levelNumber,
-                                    size = 16.dp
+                                    size = 15.dp
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(5.dp))
                                 Text(
                                     text = "STAGE ${levelStage.levelNumber}/100: ${levelStage.title.uppercase()}",
                                     color = GoldAccent,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Black,
-                                    letterSpacing = 0.6.sp
+                                    letterSpacing = 0.4.sp,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (isLevelCompleted) {
-                                    Unreal3DCrownIcon(size = 14.dp)
+                                    Unreal3DCrownIcon(size = 13.dp)
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
                                 Text(
-                                    text = if (isLevelCompleted) "STAGE CLEARED!" else "REQUIRED: BOTH TARGETS",
-                                    color = if (isLevelCompleted) Color(0xFF69F0AE) else Color.White.copy(alpha = 0.85f),
+                                    text = if (isLevelCompleted) "CLEARED" else "BOTH TARGETS",
+                                    color = if (isLevelCompleted) Color(0xFF69F0AE) else Color.White.copy(alpha = 0.88f),
                                     fontSize = 9.sp,
-                                    fontWeight = FontWeight.Black
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -275,14 +283,16 @@ fun GameScreen(
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Unreal3DTargetIcon(size = 14.dp, isCompleted = isScoreDone)
-                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Unreal3DTargetIcon(size = 13.dp, isCompleted = isScoreDone)
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = if (isScoreDone) "Score: ${gameState.score}/${levelStage.targetScore} [OK]"
                                         else "Score: ${gameState.score}/${levelStage.targetScore}",
                                         color = if (isScoreDone) Color(0xFFB9F6CA) else Color.White,
                                         fontSize = 10.sp,
-                                        fontWeight = FontWeight.Black
+                                        fontWeight = FontWeight.Black,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                             }
@@ -303,14 +313,16 @@ fun GameScreen(
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Unreal3DLightningIcon(size = 14.dp, isCompleted = isLinesDone)
-                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Unreal3DLightningIcon(size = 13.dp, isCompleted = isLinesDone)
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = if (isLinesDone) "Lines: ${gameState.linesClearedTotal}/${levelStage.targetLines} [OK]"
                                         else "Lines: ${gameState.linesClearedTotal}/${levelStage.targetLines}",
                                         color = if (isLinesDone) Color(0xFFB9F6CA) else Color.White,
                                         fontSize = 10.sp,
-                                        fontWeight = FontWeight.Black
+                                        fontWeight = FontWeight.Black,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                             }

@@ -294,7 +294,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             put("playerId", pid)
             put("playerName", s.momName)
             put("deviceModel", devModel)
-            put("appVersion", "1.3.0")
+            put("appVersion", "1.3.1")
             put("currentActivity", detailedActivity)
             put("screenState", currentScreenName)
             put("isInGame", isCurrentlyInGame)

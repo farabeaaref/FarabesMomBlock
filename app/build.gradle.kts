@@ -12,8 +12,8 @@ android {
         applicationId = "com.farabe.farabesmomblock"
         minSdk = 24
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.3.0"
+        versionCode = 8
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
